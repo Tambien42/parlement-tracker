@@ -3,8 +3,25 @@ import scrapy
 
 class ScrutinsanSpider(scrapy.Spider):
     name = 'scrutinsAN'
-    allowed_domains = ['https://www2.assemblee-nationale.fr/']
-    start_urls = ['http://https://www2.assemblee-nationale.fr/scrutins/liste/(legislature)/16/']
+    allowed_domains = ['assemblee-nationale.fr']
+    start_urls = ['https://www2.assemblee-nationale.fr/scrutins/liste/(legislature)/16/']
+
+    def non_votant(self, response):
+        # Extract the number of Non Votant
+        non_votant = 0
+        div = response.css('div.Non-votant')
+
+        if div:
+            for d in div:
+                i = response.css('div.Non-votant p b ::text').get()
+                non_votant = non_votant + int(i)
+        
+        # Yield the extracted data as an item
+        yield {'non_votant': non_votant}
+        # Follow the link to the previous page
+        prev_page_url = response.meta['prev_page']
+        yield scrapy.Request(prev_page_url, callback=self.parse)
+        
 
     def parse(self, response):
         # Extract the rows from the table
@@ -22,11 +39,28 @@ class ScrutinsanSpider(scrapy.Spider):
             votes_against = row.xpath('./td[5]/text()').extract_first()
             votes_abstention = row.xpath('./td[6]/text()').extract_first()
 
+            # Extract the number of Non Votant
+            url_analyse_scrutin = row.xpath('./td[3]/a/@href')[-1].get()
+            u = 'https://www2.assemblee-nationale.fr' + url_analyse_scrutin
+            non_votant = scrapy.Request(response.urljoin(u), callback=self.non_votant, meta={'prev_page': response.url})
+            #print(non_votant)
             # Print the extracted data
-            print(f'Number: {number}, Date: {date}, Object: {object}, Votes for: {votes_for}, Votes against: {votes_against}, Votes abstention: {votes_abstention}')
+            #print(f'Number: {number}, Date: {date}, Object: {object}, Votes for: {votes_for}, Votes against: {votes_against}, Votes abstention: {votes_abstention}')
 
-            # Check if there is a next page
-            next_page_url = response.css('div.pagination-bootstrap li:last-child a::attr(href)').get()
-            if next_page_url:
-                # If there is a next page, follow the link and scrape it
-                yield scrapy.Request(response.urljoin(next_page_url), self.parse)
+            # Yield the extracted data as an item
+            yield {
+                'number': number,
+                'date': date,
+                'object': object,
+                'votes_for': votes_for,
+                'votes_against': votes_against,
+                'votes_abstention': votes_abstention
+            }
+
+        # Check if there is a next page
+        next = response.css('div.pagination-bootstrap li:last-child a::attr(href)').get()
+        
+        if next:
+            # If there is a next page, follow the link and scrape it
+            next_page_url  = 'https://www2.assemblee-nationale.fr' + next
+            yield scrapy.Request(response.urljoin(next_page_url), self.parse)
