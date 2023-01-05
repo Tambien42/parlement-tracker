@@ -53,4 +53,68 @@ for div in content.find_all('li'):
         collaborateur.append(c.get_text())
 
     #TODO extract commission history and date in fonctions tab
-    print(f'date_election: {date_election}')
+    
+    # Extract number of question
+    if fiche.find('div', class_='fonctions-tab-selection').find('li', class_='li-question'):
+        url_question = 'https://www2.assemblee-nationale.fr' + fiche.find('div', class_='fonctions-tab-selection').find('li', class_='li-question').find('a')['data-url']
+        page_question = requests.get(url_question)
+        pq = BeautifulSoup(page_question.content, 'html.parser')
+        
+        while True:
+            question = pq.find('ul', class_='liens-liste').find_all('li', recursive=False)
+            for q in question:
+                numero = q.find('h4').get_text()
+                link = q.find('ul', class_='liens-liste-embed').find('a')['href']
+                rubrique = q.find('p', class_='vues').find('span').get_text()
+                titre = q.find('p', class_='vues').find_all('span')[-1].get_text()
+                corps = q.find_all('p', recursive=False)[-1].get_text()
+                # reponse if reponse save reponse link else 'en attente de réponse'
+                if q.find('div', class_='reponse'):
+                    reponse =  q.find('div', class_='reponse').find('p').get_text()
+                else:
+                    reponse = 'en attente de réponse'
+            
+            pagination = pq.find('div', class_='pagination-bootstrap')
+            if pagination:
+                next = pagination.find_all('li')[-1].find('a')
+                if next:
+                    url_next = 'https://www2.assemblee-nationale.fr' + next['href']
+                    page_question = requests.get(url_next)
+                    pq = BeautifulSoup(page_question.content, 'html.parser')
+                else:
+                    break
+            else:
+                break
+
+    # Extract Rapport
+    # TODO Difference entre Avis et rapport
+    if fiche.find('div', class_='fonctions-tab-selection').find('li', class_='li-rapport'):
+        url_rapport = 'https://www2.assemblee-nationale.fr' + fiche.find('div', class_='fonctions-tab-selection').find('li', class_='li-rapport').find('a')['data-url']
+        page_rapport = requests.get(url_rapport)
+        pr = BeautifulSoup(page_rapport.content, 'html.parser')
+    
+        while True:
+            rapport = pr.find('ul', class_='liens-liste').find_all('li', recursive=False)
+            for r in rapport:
+                numero = r.find('h4').get_text()
+                date = r.find_all('li')[0].get_text()
+                link = r.find_all('li')[1].find('a')['href']
+                titre = r.find('p').get_text()
+                print(f'name: {name}, numero: {numero}, date: {date}, link: {link}, titre: {titre}')
+            
+            pagination = pr.find('div', class_='pagination-bootstrap')
+            if pagination:
+                if pagination.find_all('li')[-1].find('a'):
+                    next = pagination.find_all('li')[-1].find('a')
+                    url_next = 'https://www2.assemblee-nationale.fr' + next['href']
+                    page_rapport = requests.get(url_next)
+                    pq = BeautifulSoup(page_rapport.content, 'html.parser')
+                else:
+                    break
+            else:
+                break
+
+    
+    
+    
+    
