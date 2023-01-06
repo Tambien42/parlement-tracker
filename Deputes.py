@@ -124,7 +124,6 @@ for div in content.find_all('li'):
                 date = p.find_all('li')[0].get_text()
                 link = p.find_all('li')[1].find('a')['href']
                 titre = p.find('p').get_text()
-                print(f'numero: {numero}, date: {date}, link: {link}, titre: {titre}')
             
             pagination = pp.find('div', class_='pagination-bootstrap')
             if pagination:
@@ -139,6 +138,30 @@ for div in content.find_all('li'):
                 break
     
     # Extract commission involvement
+    if fiche.find('div', class_='fonctions-tab-selection').find('li', class_='li-crc'):
+        url_crc = 'https://www2.assemblee-nationale.fr' + fiche.find('div', class_='fonctions-tab-selection').find('li', class_='li-crc').find('a')['data-url']
+        page_crc = requests.get(url_crc)
+        crc = BeautifulSoup(page_crc.content, 'html.parser')
+
+        while True:
+            participation_commission = crc.find('ul', class_='liens-liste').find_all('li', recursive=False)
+            for pc in participation_commission:
+                numero = pc.find('h4').get_text().strip()
+                date = pc.find_all('li')[0].get_text()
+                link = pc.find_all('li')[1].find('a')['href']
+                resume = pc.find_all('ul')[-1].get_text().strip()
+            
+            pagination = crc.find('div', class_='pagination-bootstrap')
+            if pagination:
+                if pagination.find_all('li')[-1].find('a'):
+                    next = pagination.find_all('li')[-1].find('a')
+                    url_next = 'https://www2.assemblee-nationale.fr' + next['href']
+                    page_crc = requests.get(url_next)
+                    crc = BeautifulSoup(page_crc.content, 'html.parser')
+                else:
+                    break
+            else:
+                break
 
 
     
