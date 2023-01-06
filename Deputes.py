@@ -162,6 +162,35 @@ for div in content.find_all('li'):
                     break
             else:
                 break
+    
+    # Extract vote position
+    # TODO regarder les non-votants comme Braun-Pivet
+    if fiche.find('div', class_='fonctions-tab-selection').find('li', class_='li-wrapvotes'):
+        url_votes = 'https://www2.assemblee-nationale.fr' + fiche.find('div', class_='fonctions-tab-selection').find('li', class_='li-wrapvotes').find('a')['data-url']
+        page_votes = requests.get(url_votes)
+        vote = BeautifulSoup(page_votes.content, 'html.parser')
+
+        while True:
+            votes = vote.find('ul', class_='liens-liste').find_all('li', recursive=False)
+            for v in votes:
+                numero = v.find_all('li')[0].find('a')['href'].split('/')[-1]
+                position_vote = v.find('span', class_='position_vote').get_text()
+                date = v.find('h4').find_all('span')[-1].get_text()
+                link = v.find_all('li')[0].find('a')['href']
+                titre = v.find('h4').get_text().strip()
+                print(f'numero: {numero}, position de vote: {position_vote}, date: {date}, link: {link}, titre: {titre}')
+            
+            pagination = v.find('div', class_='pagination-bootstrap')
+            if pagination:
+                if pagination.find_all('li')[-1].find('a'):
+                    next = pagination.find_all('li')[-1].find('a')
+                    url_next = 'https://www2.assemblee-nationale.fr' + next['href']
+                    page_votes = requests.get(url_next)
+                    votes = BeautifulSoup(page_votes.content, 'html.parser')
+                else:
+                    break
+            else:
+                break
 
 
     
