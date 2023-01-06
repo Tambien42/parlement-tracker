@@ -15,8 +15,6 @@ for div in content.find_all('li'):
     name = div.find('a').text
     url_depute = 'https://www2.assemblee-nationale.fr' + div.find('a')['href']
 
-    #print(f'Name: {name}, Link: {url_depute}')
-
     r = requests.get(url_depute)
     s = BeautifulSoup(r.content, 'html.parser')
     fiche = s.find('div', {"id": "deputes-fiche"})
@@ -86,7 +84,7 @@ for div in content.find_all('li'):
             else:
                 break
 
-    # Extract Rapport
+    # Extract number of report
     # TODO Difference entre Avis et rapport
     if fiche.find('div', class_='fonctions-tab-selection').find('li', class_='li-rapport'):
         url_rapport = 'https://www2.assemblee-nationale.fr' + fiche.find('div', class_='fonctions-tab-selection').find('li', class_='li-rapport').find('a')['data-url']
@@ -100,7 +98,6 @@ for div in content.find_all('li'):
                 date = r.find_all('li')[0].get_text()
                 link = r.find_all('li')[1].find('a')['href']
                 titre = r.find('p').get_text()
-                print(f'name: {name}, numero: {numero}, date: {date}, link: {link}, titre: {titre}')
             
             pagination = pr.find('div', class_='pagination-bootstrap')
             if pagination:
@@ -108,11 +105,41 @@ for div in content.find_all('li'):
                     next = pagination.find_all('li')[-1].find('a')
                     url_next = 'https://www2.assemblee-nationale.fr' + next['href']
                     page_rapport = requests.get(url_next)
-                    pq = BeautifulSoup(page_rapport.content, 'html.parser')
+                    pr = BeautifulSoup(page_rapport.content, 'html.parser')
                 else:
                     break
             else:
                 break
+    
+    # Extract law proposals
+    if fiche.find('div', class_='fonctions-tab-selection').find('li', class_='li-pplco'):
+        url_pplco = 'https://www2.assemblee-nationale.fr' + fiche.find('div', class_='fonctions-tab-selection').find('li', class_='li-pplco').find('a')['data-url']
+        page_pplco = requests.get(url_pplco)
+        pp = BeautifulSoup(page_pplco.content, 'html.parser')
+
+        while True:
+            proposition = pp.find('ul', class_='liens-liste').find_all('li', recursive=False)
+            for p in proposition:
+                numero = p.find('h4').get_text()
+                date = p.find_all('li')[0].get_text()
+                link = p.find_all('li')[1].find('a')['href']
+                titre = p.find('p').get_text()
+                print(f'numero: {numero}, date: {date}, link: {link}, titre: {titre}')
+            
+            pagination = pp.find('div', class_='pagination-bootstrap')
+            if pagination:
+                if pagination.find_all('li')[-1].find('a'):
+                    next = pagination.find_all('li')[-1].find('a')
+                    url_next = 'https://www2.assemblee-nationale.fr' + next['href']
+                    page_rapport = requests.get(url_next)
+                    pp = BeautifulSoup(page_rapport.content, 'html.parser')
+                else:
+                    break
+            else:
+                break
+    
+    # Extract commission involvement
+
 
     
     
