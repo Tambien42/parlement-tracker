@@ -218,6 +218,7 @@ for div in content.find_all('li'):
             else:
                 break
 
+    # Extract Contributions What is contributions ?
 
     
     
