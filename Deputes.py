@@ -45,8 +45,9 @@ for div in content.find_all('li'):
 
     current_commision = fiche.find('dl', class_='deputes-liste-attributs').find_all('dd')[0].find('li').get_text()
     
-    # TODO extract date
-    birthdate = fiche.find('dl', class_='deputes-liste-attributs').find_all('dd')[1].find('li').get_text().strip()
+    date = fiche.find('dl', class_='deputes-liste-attributs').find_all('dd')[1].find('li').get_text().strip()
+    date_pattern = r'\d{1,2} [a-zéû]+ \d{4}'
+    birthdate = re.findall(date_pattern, date)[0]
     profession = fiche.find('dl', class_='deputes-liste-attributs').find_all('dd')[1].find_all('li')[1].get_text().strip()
     suppleant = fiche.find('dl', class_='deputes-liste-attributs').find_all('dd')[2].find('li').get_text()
     mail = fiche.find('dl', class_='deputes-liste-attributs').find_all('dd')[3].find_all('a')[1].get_text()
