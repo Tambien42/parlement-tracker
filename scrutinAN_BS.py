@@ -1,4 +1,4 @@
-import requests
+import requests, re
 from bs4 import BeautifulSoup
 
 def scrape_page(url):
@@ -36,10 +36,21 @@ def scrape_page(url):
         for d in div:
             non_votants = non_votants + int(d.find('p').find('b').text)
             list_nv.append(d.find('ul').text.strip().split('(')[0].replace('\xa0', ' ').strip())   
-            print(f'non_votants: {list_nv}')
+        
+        print(f'scrutin: {number}')
+        # Extract group votes
+        groups = s.find('ul', {"id": "index-groupe"}).find_all('li')
+        for g in groups:
+            gr = g.find_all('span')
+            group = gr[0].text
+            nb_votes = 0
+            if len(gr) != 1:
+                for n in gr[1:]:
+                    nb_votes = nb_votes + int(n.find('b').text)
+            print(f'group: {group}, votes: {nb_votes}')
 
         # Print the extracted data
-        print(f'Number: {number}, Date: {date}, Object: {object}, Votes for: {votes_for}, Votes against: {votes_against}, Votes abstention: {votes_abstention}, Non Votants: {non_votants}')
+        #print(f'Number: {number}, Date: {date}, Object: {object}, Votes for: {votes_for}, Votes against: {votes_against}, Votes abstention: {votes_abstention}, Non Votants: {non_votants}')
 
 # Start with the first page
 url = 'https://www2.assemblee-nationale.fr/scrutins/liste/(legislature)/16'
