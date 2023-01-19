@@ -13,14 +13,17 @@ deputes = []
 
 for div in content.find_all('li'):
     name = div.find('a').text
-    url_depute = 'https://www2.assemblee-nationale.fr' + div.find('a')['href']
+    url_depute = 'https://www2.assemblee-nationale.fr' + div.find('a')['href'] + '?force'
 
     r = requests.get(url_depute)
     s = BeautifulSoup(r.content, 'html.parser')
     fiche = s.find('div', {"id": "deputes-fiche"})
 
-    # TODO extract date
-    date_election = fiche.find('div', {"id": "fonctions-an"}).find('li').get_text().strip()
+    date = fiche.find('div', {"id": "fonctions-an"}).find('li').get_text().strip()
+    date_pattern = r'\d{2}/\d{2}/\d{4}'
+    dates = re.findall(date_pattern, date)
+    date_election = dates[0]
+    date_start = dates[1]
     circonscription = fiche.find_all('p', class_='deputy-healine-sub-title')[0].get_text()
     # mandat 'en cours' ou non
     mandat = fiche.find_all('p', class_='deputy-healine-sub-title')[1].get_text()
@@ -29,12 +32,19 @@ for div in content.find_all('li'):
 
     party = fiche.find('div', {"id": "deputes-illustration"}).find('span').get_text()
 
-    # TODO check if personal account
-    facebook = fiche.find_all('span', class_='cartouche')[0].find('a')['href']
-    twitter = fiche.find_all('span', class_='cartouche')[1].find('a')['href']
-    instagram = fiche.find_all('span', class_='cartouche')[2].find('a')['href']
+    contact = fiche.find('div', {"id": "deputes-contact"})
+    facebook = None
+    twitter = None
+    instagram = None
+    if contact.find('a', class_='facebook'):
+        facebook = contact.find('a', class_='facebook')['href']
+    if contact.find('a', class_='twitter'):
+        twitter = contact.find('a', class_='twitter')['href']
+    if contact.find('a', class_='instagram'):
+        instagram = contact.find('a', class_='instagram')['href']
 
     current_commision = fiche.find('dl', class_='deputes-liste-attributs').find_all('dd')[0].find('li').get_text()
+    
     # TODO extract date
     birthdate = fiche.find('dl', class_='deputes-liste-attributs').find_all('dd')[1].find('li').get_text().strip()
     profession = fiche.find('dl', class_='deputes-liste-attributs').find_all('dd')[1].find_all('li')[1].get_text().strip()
@@ -49,8 +59,6 @@ for div in content.find_all('li'):
     co = fiche.find(text=re.compile('Liste des collaborateurs')).parent.parent.parent.find_all('li')
     for c in co:
         collaborateur.append(c.get_text())
-
-    #TODO extract commission history and date in fonctions tab
     
     # Extract number of question
     if fiche.find('div', class_='fonctions-tab-selection').find('li', class_='li-question'):
@@ -124,7 +132,6 @@ for div in content.find_all('li'):
                 date = p.find_all('li')[0].get_text()
                 link = p.find_all('li')[1].find('a')['href']
                 corps = p.find('p').get_text()
-                print(f'name: {name}, numero: {numero}, date: {date}, link: {link}, corps: {corps}')
             
             pagination = ppl.find('div', class_='pagination-bootstrap')
             if pagination:
