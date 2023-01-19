@@ -30,10 +30,13 @@ def scrape_page(url):
         r = requests.get(url_analyse_scrutin)
         s = BeautifulSoup(r.content, 'html.parser')
         div = s.find_all('div', class_='Non-votant')
+        list_nv = []
         # Extract Number of Non Votant
         non_votants = 0
         for d in div:
             non_votants = non_votants + int(d.find('p').find('b').text)
+            list_nv.append(d.find('ul').text.strip().split('(')[0].replace('\xa0', ' ').strip())   
+            print(f'non_votants: {list_nv}')
 
         # Print the extracted data
         print(f'Number: {number}, Date: {date}, Object: {object}, Votes for: {votes_for}, Votes against: {votes_against}, Votes abstention: {votes_abstention}, Non Votants: {non_votants}')

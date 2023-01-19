@@ -199,7 +199,7 @@ for div in content.find_all('li'):
                 break
     
     # Extract vote position
-    # TODO regarder les non-votants comme Braun-Pivet
+    # list non-votant in scrutinAN_BS.py files
     if fiche.find('div', class_='fonctions-tab-selection').find('li', class_='li-wrapvotes'):
         url_votes = 'https://www2.assemblee-nationale.fr' + fiche.find('div', class_='fonctions-tab-selection').find('li', class_='li-wrapvotes').find('a')['data-url']
         page_votes = requests.get(url_votes)
