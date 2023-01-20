@@ -22,7 +22,7 @@ for commission in commissions:
     soup = BeautifulSoup(response.content, 'html.parser')
     # Extract the rows from the table
     container = soup.find('div', class_='antabs-items')
-    #composition = container.find_all('div', class_='ha-grid-item')
+    name = commission[0]
     members = container.find('table').find('tbody').find_all('tr')
     composition = []
     for m in members:

@@ -33,8 +33,6 @@ while True:
         else:
             answered_date = column[2].find_all('strong')[-1].text
 
-        print(f'Type: {type}, number: {number}, legislature: {legislature}, name: {name}, title: {title}, ministry: {ministry}, asked_date: {asked_date}, answered_date: {answered_date}, link: {link}')
-
     # Iterate over all pages    
     pagination = soup.find('div', class_='pagination-bootstrap')
     if pagination:
