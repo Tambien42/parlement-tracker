@@ -1,5 +1,42 @@
 import requests, re
 from bs4 import BeautifulSoup
+from sqlalchemy import create_engine, Column, Integer, String, DATE, INTEGER, TEXT, Float, JSON
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime
+
+Base = declarative_base()
+
+class Scrutins(Base):
+    __tablename__ = 'scrutins'
+
+    ids = Column("id", Integer, primary_key=True)
+    number = Column("number", Integer)
+    date = Column("date", DATE)
+    object = Column("object", TEXT)
+    votes_for = Column("votes_for", Integer)
+    votes_against = Column("votes_against", Integer)
+    votes_abstention = Column("votes_abstention", Integer)
+    non_votants = Column("non_votants", Integer)
+    total_votes = Column("total_votes", Integer)
+    pourcentage_abstention = Column("pourcentage_abstention", Float)
+    group_vote = Column("group_vote", JSON)
+
+    def __init__(self, number, date, object, votes_for, votes_against, votes_abstention, non_votants, total_votes, pourcentage_abstention, group_vote):
+        self.number = number
+        self.date = date
+        self.object = object
+        self.votes_for = votes_for
+        self.votes_against = votes_against
+        self.votes_abstention = votes_abstention
+        self.non_votants = non_votants
+        self.total_votes = total_votes
+        self.pourcentage_abstention = pourcentage_abstention
+        self.group_vote = group_vote
+    
+    def __repr__(self):
+        return f'(Scrutins n {self.number})'
+
 
 def scrape_page(url):
     # Make a request to the webpage
@@ -18,9 +55,9 @@ def scrape_page(url):
         cells = row.find_all('td')
 
         # Extract the data from the cells
-        number = cells[0].text
-        date = cells[1].text
-        object = cells[2].text
+        number = re.sub("[^0-9]", "", cells[0].text)
+        date = datetime.strptime(cells[1].text, "%d/%m/%Y")
+        obj = cells[2].text
         votes_for = cells[3].text
         votes_against = cells[4].text
         votes_abstention = cells[5].text
@@ -35,9 +72,15 @@ def scrape_page(url):
         non_votants = 0
         for d in div:
             non_votants = non_votants + int(d.find('p').find('b').text)
-            list_nv.append(d.find('ul').text.strip().split('(')[0].replace('\xa0', ' ').strip())   
+            list_nv.append(d.find('ul').text.strip().split('(')[0].replace('\xa0', ' ').strip())
+
+        # Calculation
+        total_votes = int(votes_for) + int(votes_against) + int(votes_abstention) + int(non_votants)
+        pourcentage_participation = float((total_votes / 577) * 100)
+        pourcentage_abstention = 100 - pourcentage_participation
         
         # Extract group votes
+        group_vote = {}
         groups = s.find('ul', {"id": "index-groupe"}).find_all('li')
         for g in groups:
             gr = g.find_all('span')
@@ -46,6 +89,18 @@ def scrape_page(url):
             if len(gr) != 1:
                 for n in gr[1:]:
                     nb_votes = nb_votes + int(n.find('b').text)
+            group_vote[group] = nb_votes
+        
+        # Store in DB
+        scrutins = Scrutins(int(number), date, obj, votes_for, votes_against, votes_abstention, non_votants, total_votes, pourcentage_abstention, group_vote)
+        session.add(scrutins)
+        session.commit() 
+
+# SQLAlchemy
+engine = create_engine('sqlite:///votes.db')
+Base.metadata.create_all(engine)
+Session = sessionmaker(bind=engine)
+session = Session()
 
 # Start with the first page
 url = 'https://www2.assemblee-nationale.fr/scrutins/liste/(legislature)/16'
