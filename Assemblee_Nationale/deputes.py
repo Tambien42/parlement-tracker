@@ -1,5 +1,77 @@
 import requests, re
 from bs4 import BeautifulSoup
+from sqlalchemy import create_engine, Column, Integer, String, DATE, INTEGER, TEXT, Float, JSON
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime
+from dateutil import parser
+import json
+import locale
+
+# set the locale to French
+locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
+
+Base = declarative_base()
+
+class Scrutins(Base):
+    __tablename__ = 'deputes'
+
+    ids = Column("id", String, primary_key=True, autoincrement=False)
+    name = Column("name", String)
+    date_election = Column("date_election", DATE)
+    date_start = Column("date_start", DATE)
+    circonscription = Column("circonscription", String)
+    mandat = Column("mandat", String)
+    photo = Column("photo", String)
+    party = Column("party", String)
+    facebook = Column("facebook", String)
+    twitter = Column("twitter", String)
+    instagram = Column("instagram", String)
+    current_commission = Column("current_commission", String)
+    birthdate = Column("birthdate", DATE)
+    profession = Column("profession", String)
+    suppleant = Column("suppleant", String)
+    mail = Column("mail", String)
+    rattachement_financement = Column("rattachement_financement", String)
+    numero_siege = Column("numero_siege", Integer)
+    collaborateur = Column("collaborateur", JSON)
+    question = Column("question", TEXT)
+    rapport = Column("rapport", TEXT)
+    proposition_loi_author = Column("proposition_loi_author", TEXT)
+    proposition_loi_cosign = Column("proposition_loi_cosign", TEXT)
+    commission_participation = Column("commission_participation", TEXT)
+    position_vote = Column("position_vote", TEXT)
+
+    def __init__(self, deputes):
+        self.ids = deputes["id"]
+        self.name = deputes["name"]
+        self.date_election = deputes["date_election"]
+        self.date_start = deputes["date_start"]
+        self.circonscription = deputes["circonscription"]
+        self.mandat = deputes["mandat"]
+        self.photo = deputes["photo"]
+        self.party = deputes["party"]
+        self.facebook = deputes["facebook"]
+        self.twitter = deputes["twitter"]
+        self.instagram = deputes["instagram"]
+        self.current_commission = deputes["current_commission"]
+        self.birthdate = deputes["birthdate"]
+        self.profession = deputes["profession"]
+        self.suppleant = deputes["suppleant"]
+        self.mail = deputes["mail"]
+        self.rattachement_financement = deputes["rattachement_financement"]
+        self.numero_siege = int(deputes["numero_siege"])
+        self.collaborateur = json.dumps(deputes["collaborateur"])
+
+    
+    def __repr__(self):
+        return f'(Scrutins n {self.number})'
+
+# SQLAlchemy
+engine = create_engine('sqlite:///votes.db')
+Base.metadata.create_all(engine)
+Session = sessionmaker(bind=engine)
+session = Session()
 
 URL = 'https://www2.assemblee-nationale.fr/deputes/liste/alphabetique'
 # Make a request to the webpage
@@ -9,10 +81,11 @@ soup = BeautifulSoup(page.content, 'html.parser')
 # Find the div containing the data
 content = soup.find('div', {"id": "deputes-list"})
 
-deputes = []
+deputes = {}
 
 for div in content.find_all('li'):
-    name = div.find('a').text
+    deputes['name'] = div.find('a').text
+    deputes['id'] = div.find('a')['href'].split('/')[-1]
     url_depute = 'https://www2.assemblee-nationale.fr' + div.find('a')['href'] + '?force'
 
     r = requests.get(url_depute)
@@ -22,44 +95,54 @@ for div in content.find_all('li'):
     date = fiche.find('div', {"id": "fonctions-an"}).find('li').get_text().strip()
     date_pattern = r'\d{2}/\d{2}/\d{4}'
     dates = re.findall(date_pattern, date)
-    date_election = dates[0]
-    date_start = dates[1]
-    circonscription = fiche.find_all('p', class_='deputy-healine-sub-title')[0].get_text()
+    deputes['date_election'] = datetime.strptime(dates[0], "%d/%m/%Y")
+    deputes['date_start'] = datetime.strptime(dates[1], "%d/%m/%Y")
+    deputes['circonscription'] = fiche.find_all('p', class_='deputy-healine-sub-title')[0].get_text()
     # mandat 'en cours' ou non
-    mandat = fiche.find_all('p', class_='deputy-healine-sub-title')[1].get_text()
+    deputes['mandat'] = fiche.find_all('p', class_='deputy-healine-sub-title')[1].get_text()
 
-    photo = 'https://www2.assemblee-nationale.fr' + fiche.find('div', class_='deputes-image').find('img')['src']
+    deputes['photo'] = 'https://www2.assemblee-nationale.fr' + fiche.find('div', class_='deputes-image').find('img')['src']
 
-    party = fiche.find('div', {"id": "deputes-illustration"}).find('span').get_text()
+    deputes['party'] = fiche.find('div', {"id": "deputes-illustration"}).find('a').get_text()
 
     contact = fiche.find('div', {"id": "deputes-contact"})
-    facebook = None
-    twitter = None
-    instagram = None
+    deputes['facebook'] = None
+    deputes['twitter'] = None
+    deputes['instagram'] = None
     if contact.find('a', class_='facebook'):
-        facebook = contact.find('a', class_='facebook')['href']
+        deputes['facebook'] = contact.find('a', class_='facebook')['href']
     if contact.find('a', class_='twitter'):
-        twitter = contact.find('a', class_='twitter')['href']
+        deputes['twitter'] = contact.find('a', class_='twitter')['href']
     if contact.find('a', class_='instagram'):
-        instagram = contact.find('a', class_='instagram')['href']
+        deputes['instagram'] = contact.find('a', class_='instagram')['href']
 
-    current_commision = fiche.find('dl', class_='deputes-liste-attributs').find_all('dd')[0].find('li').get_text()
+    deputes['current_commission'] = fiche.find('dl', class_='deputes-liste-attributs').find_all('dd')[0].find('li').get_text().replace('\xa0', ' ')
     
     date = fiche.find('dl', class_='deputes-liste-attributs').find_all('dd')[1].find('li').get_text().strip()
     date_pattern = r'\d{1,2} [a-zéû]+ \d{4}'
-    birthdate = re.findall(date_pattern, date)[0]
-    profession = fiche.find('dl', class_='deputes-liste-attributs').find_all('dd')[1].find_all('li')[1].get_text().strip()
-    suppleant = fiche.find('dl', class_='deputes-liste-attributs').find_all('dd')[2].find('li').get_text()
-    mail = fiche.find('dl', class_='deputes-liste-attributs').find_all('dd')[3].find_all('a')[1].get_text()
-    rattachement_financement = fiche.find('dl', class_='deputes-liste-attributs').find_all('dd')[4].find('li').get_text().strip()
-    declaration_interet = fiche.find('dl', class_='deputes-liste-attributs').find_all('dd')[5].find('a')['href']
+    #birthdate = parser.parse(re.findall(date_pattern, date)[0], dayfirst=False, fuzzy=True)
+    #date_format = "%Y-%m-%d %H:%M:%S"
+    #dt = datetime.strptime(str(birthdate), date_format)
+    #new_date_format = "%d/%m/%Y"
+    #new_birthdate = dt.strftime(new_date_format)
+    #deputes['birthdate'] = birthdate.strftime("%d/%m/%Y")
+    print(type(deputes["id"]))
+    deputes['profession'] = fiche.find('dl', class_='deputes-liste-attributs').find("dt", text="Biographie").find_next_sibling().find_all('li')[1].get_text().strip()
+    if fiche.find('dl', class_='deputes-liste-attributs').find("dt", text=re.compile("Suppléant(e)?")):
+        deputes['suppleant'] = fiche.find('dl', class_='deputes-liste-attributs').find("dt", text=re.compile("Suppléant(e)?")).find_next_sibling().find('li').get_text()
+    else:
+        deputes['suppleant'] = ""
+    deputes['mail'] = fiche.find('dl', class_='deputes-liste-attributs').find("dt", text="Contact").find_next_sibling().find_all('a')[-1].get_text()
+    deputes['rattachement_financement'] = fiche.find('dl', class_='deputes-liste-attributs').find("dt", text="Rattachement au titre du financement de la vie politique ").find_next_sibling().find('li').get_text().strip()
+    deputes['declaration_interet'] = fiche.find('dl', class_='deputes-liste-attributs').find("dt", text="Déclaration d’intérêts et d’activités").find_next_sibling().find('a')['href']
 
-    numero_siege = fiche.find('div', {"id": "hemicycle-container"})['data-place']
+    deputes['numero_siege'] = fiche.find('div', {"id": "hemicycle-container"})['data-place']
 
     collaborateur = []
     co = fiche.find(text=re.compile('Liste des collaborateurs')).parent.parent.parent.find_all('li')
     for c in co:
         collaborateur.append(c.get_text())
+    #deputes['collaborateur'] = collaborateur
     
     # Extract number of question
     if fiche.find('div', class_='fonctions-tab-selection').find('li', class_='li-question'):
@@ -226,7 +309,11 @@ for div in content.find_all('li'):
             else:
                 break
 
-    # Extract Contributions What is contributions ?
+    # Extract Contributions
+    # Store in DB
+        depute_info = Scrutins(deputes)
+        session.add(depute_info)
+        session.commit() 
 
     
     
