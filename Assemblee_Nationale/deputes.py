@@ -13,7 +13,7 @@ locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
 
 Base = declarative_base()
 
-class Scrutins(Base):
+class Deputes(Base):
     __tablename__ = 'deputes'
 
     ids = Column("id", String, primary_key=True, autoincrement=False)
@@ -65,7 +65,7 @@ class Scrutins(Base):
 
     
     def __repr__(self):
-        return f'(Scrutins n {self.number})'
+        return f'(Depute {self.name})'
 
 # SQLAlchemy
 engine = create_engine('sqlite:///votes.db')
@@ -311,7 +311,7 @@ for div in content.find_all('li'):
 
     # Extract Contributions
     # Store in DB
-        depute_info = Scrutins(deputes)
+        depute_info = Deputes(deputes)
         session.add(depute_info)
         session.commit() 
 
