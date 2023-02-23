@@ -1,16 +1,9 @@
-import requests
-from bs4 import BeautifulSoup
-from sqlalchemy import create_engine, Column, Integer, String, DATE, INTEGER, TEXT, Float, JSON
+from sqlalchemy import create_engine, Column, Integer, String, DATE, INTEGER, TEXT, Float
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from soup import make_request, next_page
 from datetime import datetime
-from dateutil import parser
-import json
-import locale
 
-# set the locale to French
-locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
-# TODO Number of people in groups and list votes
 Base = declarative_base()
 
 class Groups(Base):
@@ -22,7 +15,7 @@ class Groups(Base):
     members = Column("members", TEXT)
     affiliates = Column("affiliates", TEXT)
     number = Column("number", Integer)
-    votes = Column("votes", TEXT)
+    date = Column("date", DATE)
 
 
     def __init__(self, groups):
@@ -31,72 +24,61 @@ class Groups(Base):
         self.members = groups["members"]
         self.affiliates = groups["affiliates"]
         self.number = groups["number_deputes"]
-        #self.votes = groups["votes"]
-
+        self.date = groups["date"]
     
     def __repr__(self):
-        return f'(Group n {self.name})'
+        return f'(Group: {self.name})'
 
-# SQLAlchemy
-engine = create_engine('sqlite:///votes.db')
-Base.metadata.create_all(engine)
-Session = sessionmaker(bind=engine)
-session = Session()
+def groups():
+    url = 'https://www2.assemblee-nationale.fr/16/les-groupes-politiques'
 
-URL = 'https://www2.assemblee-nationale.fr/16/les-groupes-politiques'
-#/instances/embed/121314/GP/instance/legislature/16
-# Make a request to the webpage
-page = requests.get(URL)
-# Parse the HTML content
-soup = BeautifulSoup(page.content, 'html.parser')
-# Find the div containing the data
-content = soup.find('a', class_='ajax')['data-uri-suffix']
+    groups = {}
+    # Parse the HTML content
+    soup = make_request(url)
+    # Find the ajax url containing the data
+    ajax_url = soup.find('a', class_='ajax')['data-uri-suffix']
+    ajax = make_request('https://www2.assemblee-nationale.fr' + ajax_url)
+    list = ajax.find('ul', class_='liens-liste').find_all('li', recursive=False)
+    for party in list:
+        # Get Date input
+        #TODO get all composition for all date
+        #date_input = content.find('input', id='datepicker-instance')
+        today = datetime.today().strftime('%d/%m/%Y')
+        groups['date'] = datetime.strptime(today, "%d/%m/%Y")
 
-ajax = requests.get('https://www2.assemblee-nationale.fr' + content)
-s = BeautifulSoup(ajax.content, 'html.parser')
-content = s.find('ul', class_='liens-liste').find_all('li', recursive=False)
+        # Extract name of group
+        groups["name"] = party.find("h3").text
 
-groups = {}
+        # Go to the composition url and get ajax content
+        url_composition = party.find("ul").find_all("li")[1].find("a")["href"]
+        comp_page_ajax = make_request('https://www2.assemblee-nationale.fr' + url_composition)
+        ajax_comp_url = comp_page_ajax.find('a', class_='ajax')['data-uri-suffix']
+        comp_page = make_request('https://www2.assemblee-nationale.fr' + ajax_comp_url)
+        content = comp_page.find('div', {"id": "instance-composition-list"})
 
-for c in content:
-    groups["name"] = c.find("h3").text
+        # Extract Number of deputes
+        groups['number_deputes'] = len(content.find_all('li'))
 
-    url_gr = c.find('ul').find_all('li')[1].find('a')['href']
-    gr = requests.get('https://www2.assemblee-nationale.fr' + url_gr)
-    s1 = BeautifulSoup(gr.content, 'html.parser')
-    content1 = s1.find('a', class_='ajax')['data-uri-suffix']
-    ajax1 = requests.get('https://www2.assemblee-nationale.fr' + content1)
-    s2 = BeautifulSoup(ajax1.content, 'html.parser')
-    content2 = s2.find('div', {"id": "instance-composition-list"})
-
-    # Extract Number of deputes
-    groups['number_deputes'] = len(content2.find_all('li'))
-
-    # Extract list of depute of the group by rank (president, membre, apprenté)
-    all = content2.find_all('ul')
-    groups['president'] = ''
-    groups['members'] = ''
-    groups['affiliates'] = ''
-    if len(all) == 1:
-        members_list = all[0].find_all('a', class_='instance-composition-nom')
-        for m in members_list:
-            groups['members'] = groups['members'] + ', ' + m.text.replace('\xa0', ' ')
-    elif len(all) == 2:
-        groups['president'] = all[0].find('div', class_='instance-composition-nom').find('a').text.replace('\xa0', ' ')
-        members_list = all[1].find_all('a', class_='instance-composition-nom')
-        for m in members_list:
-            groups['members'] = groups['members'] + ', ' + m.text.replace('\xa0', ' ')
-    elif len(all) == 3:
-        groups['president'] = all[0].find('div', class_='instance-composition-nom').find('a').text.replace('\xa0', ' ')
-        members_list = all[1].find_all('a', class_='instance-composition-nom')
-        for m in members_list:
-            groups['members'] = groups['members'] + ', ' + m.text.replace('\xa0', ' ')
-        aff = all[2].find_all('a', class_='instance-composition-nom')
-        for a in aff:
-            groups['affiliates'] = groups['affiliates'] + ', ' + a.text.replace('\xa0', ' ')
-    
-    print(f'members: {groups["members"]}')
-    # Store in DB
-    group = Groups(groups)
-    session.add(group)
-    session.commit() 
+        # Extract composition
+        composition = content.find_all('ul')
+        groups['president'] = ''
+        groups['members'] = ''
+        groups['affiliates'] = ''
+        if len(composition) == 1:
+            members_list = composition[0].find_all('a', class_='instance-composition-nom')
+            for m in members_list:
+                groups['members'] = groups['members'] + ', ' + m.text.replace('\xa0', ' ')
+        elif len(composition) == 2:
+            groups['president'] = composition[0].find('div', class_='instance-composition-nom').find('a').text.replace('\xa0', ' ')
+            members_list = composition[1].find_all('a', class_='instance-composition-nom')
+            for m in members_list:
+                groups['members'] = groups['members'] + ', ' + m.text.replace('\xa0', ' ')
+        elif len(composition) == 3:
+            groups['president'] = composition[0].find('div', class_='instance-composition-nom').find('a').text.replace('\xa0', ' ')
+            members_list = composition[1].find_all('a', class_='instance-composition-nom')
+            for m in members_list:
+                groups['members'] = groups['members'] + ', ' + m.text.replace('\xa0', ' ')
+            aff = composition[2].find_all('a', class_='instance-composition-nom')
+            for a in aff:
+                groups['affiliates'] = groups['affiliates'] + ', ' + a.text.replace('\xa0', ' ')
+        print(f'{groups["president"]}')
