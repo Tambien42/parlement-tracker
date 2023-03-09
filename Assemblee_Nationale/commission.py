@@ -35,62 +35,56 @@ def composition(url):
     page = make_request(url)
     section = page.find('section', class_='an-section printable')
     div = section.find('div', class_='_gutter-ms _vertical').find_all('div', recursive=False)
-    president = div[0].find('span', class_='h5').text.strip()
-    #print(president)
+    composition = {}
+    composition['president'] = div[0].find('span', class_='h5').text.strip()
     if len(div) == 4:
         vp = div[1].find_all('span', class_='h5')
-        vps = vp[0].text.strip()
+        composition['vps'] = vp[0].text.strip()
         for h in vp[1:]:
-            vps = vps + ', ' + h.text.strip()
+            composition['vps'] = composition['vps'] + ', ' + h.text.strip()
         secretaire = div[2].find_all('span', class_='h5')
-        secretaires = secretaire[0].text.strip()
+        composition['secretaires'] = secretaire[0].text.strip()
         for h in secretaire[1:]:
-            secretaires = secretaires + ', ' + h.text.strip()
+            composition['secretaires'] = composition['secretaires'] + ', ' + h.text.strip()
         membre = div[3].find_all('span', class_='h5')
-        membres = membre[0].text.strip()
+        composition['membres'] = membre[0].text.strip()
         for h in membre[1:]:
-            membres = membres + ', ' + h.text.strip()
+            composition['membres'] = composition['membres'] + ', ' + h.text.strip()
     elif len(div) == 5:
-        rapporteur = div[1].find('span', class_='h5').text.strip()
-        #print(rapporteur)
+        composition['rapporteur'] = div[1].find('span', class_='h5').text.strip()
         vp = div[2].find_all('span', class_='h5')
-        vps = vp[0].text.strip()
+        composition['vps'] = vp[0].text.strip()
         for h in vp[1:]:
-            vps = vps + ', ' + h.text.strip()
+            composition['vps'] = composition['vps'] + ', ' + h.text.strip()
         secretaire = div[3].find_all('span', class_='h5')
-        secretaires = secretaire[0].text.strip()
+        composition['secretaires'] = secretaire[0].text.strip()
         for h in secretaire[1:]:
-            secretaires = secretaires + ', ' + h.text.strip()
+            composition['secretaires'] = composition['secretaires'] + ', ' + h.text.strip()
         membre = div[4].find_all('span', class_='h5')
-        membres = membre[0].text.strip()
+        composition['membres'] = membre[0].text.strip()
         for h in membre[1:]:
-            membres = membres + ', ' + h.text.strip()
-    #print(vps)
-    #print(secretaires)
-    #print(membres)
+            composition['membres'] = composition['membres'] + ', ' + h.text.strip()
+    return composition
+
 
 def presence(url):
     page = make_request(url)
     iframe = make_request('https://www.assemblee-nationale.fr' + page.find('iframe')['src'])
     presence = iframe.find().find_all('p')
-    present = ''
-    absent = ''
-    assiste = ''
+    worker = {}
     for x in presence:
         if x.text.strip().startswith("Présent"):
             tmp = x.text.strip().replace('\xa0', ' ')
-            present = re.split(' – | – | - | - | - | - ', tmp)[-1]
-            print(present)
+            worker['present'] = re.split(' – | – | - | - | - | - ', tmp)[-1]
         elif x.text.strip().startswith("Excus"):
             tmp = x.text.strip().replace('\xa0', ' ')
-            absent = re.split(' – | – | - | - | - | - ', tmp)[-1]
-            print(absent)
+            worker['absent'] = re.split(' – | – | - | - | - | - ', tmp)[-1]
         elif x.text.strip().startswith("Assist"):
             tmp = x.text.strip().replace('\xa0', ' ')
-            assiste = re.split(' – | – | - | - | - | - ', tmp)[-1]
-            print(assiste)
-    return None
+            worker['assiste'] = re.split(' – | – | - | - | - | - ', tmp)[-1]
+    return worker
 
+#TODO save data to database in this function
 def crc(url):
     crc = {}
     while True:
@@ -114,6 +108,7 @@ def crc(url):
             url = None
         if url is None:
             break   
+    return crc
 
 def commissions():
     # Start with the first page
@@ -129,27 +124,7 @@ def commissions():
         url = 'https://www.assemblee-nationale.fr' + link['href']
         page = make_request(url)
         composition_link = 'https://www.assemblee-nationale.fr' + page.find('a', class_='composition-link')['href']
-        composition(composition_link)
+        composition = composition(composition_link)
         # Extract Comptes Rendus
         crc_url = 'https://www.assemblee-nationale.fr' + page.find('section', id='comptes_rendus_des_reunions').find('a', class_='link')['href']
-        crc(crc_url)
-
-    # Get all links to the commissions
-    # content = soup.find('main')
-    # permanent = content.find_all('a', class_="inner")
-    # permanent.pop(12)
-    # for link in permanent[4:-3]:
-    #     if link["href"][0] == "/":
-    #         url = 'https://www.assemblee-nationale.fr' + link["href"]
-    #     else:
-    #         url = link["href"]
-        
-    #     # Extract Composition
-    #     # Parse the HTML content
-    #     soup = make_request(url + '/composition')
-
-    #     # Extract Document
-    #     # Parse the HTML content
-    #     soup = make_request(url + '/documents?typeDocument=crc')
-
-commissions()
+        data = crc(crc_url)
