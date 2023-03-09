@@ -80,8 +80,6 @@ def law_proposals():
                     data['cosigner'] = modal[0].text.strip()
                     for cosign in modal[1:]:
                         data['cosigner'] = data['cosigner'] + ', ' + cosign.text.strip()
-                    print(f'{data["number"]} {data["author"]}')
-                    print(f'{data["cosigner"]}')
 
         # Get next page
         url = next_page(soup)
