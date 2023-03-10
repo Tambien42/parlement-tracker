@@ -11,6 +11,7 @@ locale.setlocale(locale.LC_TIME, "fr_FR.UTF-8")
 
 Base = declarative_base()
 
+# modified version because different class name
 def next_page_an(page):
     try:
         pagination = page.find('div', class_='an-pagination')
@@ -20,6 +21,7 @@ def next_page_an(page):
     except:
         return None
 
+# Extract questions from a depute
 def depute_questions(url):
     table = []
     while True:
@@ -34,6 +36,7 @@ def depute_questions(url):
             break 
     return ', '.join(table)
 
+# Extract reports from a depute
 def depute_rapports(url):
     table = []
     while True:
@@ -48,6 +51,7 @@ def depute_rapports(url):
             break 
     return ', '.join(table)
 
+# Extract law proposals authoe from a depute
 def depute_author(url):
     table = []
     while True:
@@ -62,6 +66,7 @@ def depute_author(url):
             break 
     return ', '.join(table)
 
+# Extract law proposals cosigner from a depute
 def depute_cosigner(url):
     table = []
     while True:
@@ -76,6 +81,7 @@ def depute_cosigner(url):
             break 
     return ', '.join(table)
 
+# Extract commission presence from a depute
 def depute_commission(url):
     table = []
     while True:
@@ -91,6 +97,7 @@ def depute_commission(url):
     return ', '.join(table)
 
 #TODO get non votant status for some deputes
+# Extract vote positions from a depuet
 def depute_votes(url):
     table = []
     while True:
@@ -109,6 +116,7 @@ def depute_votes(url):
     return ', '.join(table)
 
 #TODO return data
+# Extract all travaux parlementaires
 def travaux(ids):
     url  = 'https://www2.assemblee-nationale.fr/dyn/deputes/' + ids + '/travaux-parlementaires'
     soup = make_request(url)
@@ -142,7 +150,6 @@ def travaux(ids):
         # if title == 'Séance Publique':
         #     seance = 'Not Done'
         
-        
         commission_depute = ''
         if title == 'Commission':
             commission_depute = depute_commission(url)
@@ -152,7 +159,7 @@ def travaux(ids):
             votes_depute = depute_votes(url)
     return None
 
-
+# Extract date of election and date of debut
 def dmandat(ids):
     url = 'https://www2.assemblee-nationale.fr/dyn/deputes/' + ids + '/fonctions'
     soup = make_request(url)
@@ -171,6 +178,8 @@ def dmandat(ids):
         date_debut_mandat = datetime.strptime(date_mandat, "%d %B %Y")
     return date_election, date_debut_mandat
 
+#TODO return data from travaux parlementaires
+# Extract all deputes informations
 def deputes():
     # Start with the first page
     url = 'https://www2.assemblee-nationale.fr/deputes/liste/alphabetique'
@@ -242,5 +251,3 @@ def deputes():
         # Extract Travaux Parlementaires
         data = travaux(ids)
         
-
-deputes()
