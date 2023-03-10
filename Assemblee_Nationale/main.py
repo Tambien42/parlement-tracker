@@ -4,8 +4,10 @@ from groups import groups
 from questions import questions
 from law_proposals import law_proposals
 from commission import commissions
+from deputes import deputes
 
 def main():
+    deputes()
     scrutins()
     groups()
     questions()

@@ -37,6 +37,7 @@ class Scrutins(Base):
         return f'(Scrutins n {self.number} {self.object})'
 
 # Scrape Scrutins Data
+#TODO function do put non votant status in fiche depute
 def scrutins():
     # Start with the first page
     url = 'https://www2.assemblee-nationale.fr/scrutins/liste/(legislature)/16'
