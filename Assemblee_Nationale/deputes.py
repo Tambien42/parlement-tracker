@@ -75,6 +75,18 @@ def next_page_an(page):
     except:
         return None
 
+# get info on deputes that have resigned before launching the project
+# find the name https://www.nosdeputes.fr/deputes
+def old_deputes():
+    url = 'https://www.nosdeputes.fr/deputes'
+    soup = make_request(url)
+    old = soup.find_all('div', class_='anciens')
+    for i in old:
+        url = 'https://www.nosdeputes.fr' + i.parent['href']
+        name = i.parent.find_all("span")[1].text.strip()
+        soup = make_request(url)
+        href = soup.find('div', class_='contenu_depute').find('div', id='b1').find('ul').find('ul').find('li').find('a')['href']
+
 # Extract questions from a depute
 def depute_questions(url):
     table = []
