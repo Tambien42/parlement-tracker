@@ -103,20 +103,24 @@ def groups():
         groups['affiliates'] = ''
         if len(composition) == 1:
             members_list = composition[0].find_all('a', class_='instance-composition-nom')
-            for m in members_list:
+            groups['members'] = members_list[0].text.replace('\xa0', ' ')
+            for m in members_list[1:]:
                 groups['members'] = groups['members'] + ', ' + m.text.replace('\xa0', ' ')
         elif len(composition) == 2:
             groups['president'] = composition[0].find('div', class_='instance-composition-nom').find('a').text.replace('\xa0', ' ')
             members_list = composition[1].find_all('a', class_='instance-composition-nom')
-            for m in members_list:
+            groups['members'] = members_list[0].text.replace('\xa0', ' ')
+            for m in members_list[1:]:
                 groups['members'] = groups['members'] + ', ' + m.text.replace('\xa0', ' ')
         elif len(composition) == 3:
             groups['president'] = composition[0].find('div', class_='instance-composition-nom').find('a').text.replace('\xa0', ' ')
             members_list = composition[1].find_all('a', class_='instance-composition-nom')
-            for m in members_list:
+            groups['members'] = members_list[0].text.replace('\xa0', ' ')
+            for m in members_list[1:]:
                 groups['members'] = groups['members'] + ', ' + m.text.replace('\xa0', ' ')
             aff = composition[2].find_all('a', class_='instance-composition-nom')
-            for a in aff:
+            groups['affiliates'] = aff[0].text.replace('\xa0', ' ')
+            for a in aff[1:]:
                 groups['affiliates'] = groups['affiliates'] + ', ' + a.text.replace('\xa0', ' ')
         save_to_database(groups, Groups)
     print('Groups Done')
