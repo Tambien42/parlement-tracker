@@ -11,6 +11,60 @@ locale.setlocale(locale.LC_TIME, "fr_FR.UTF-8")
 
 Base = declarative_base()
 
+class Deputes(Base):
+    __tablename__ = 'deputes'
+
+    ids = Column("id", String, primary_key=True, autoincrement=False)
+    name = Column("name", String)
+    photo = Column("photo", String)
+    group = Column("group", String)
+    mandat = Column("mandat", String)
+    birthdate = Column("birthdate", DATE)
+    profession = Column("profession", String)
+    commission = Column("commission", String)
+    suppleant = Column("suppleant", String)
+    rattachement_finance = Column("rattachement_finance", String)
+    an_adress = Column("an_adress", String)
+    circonscription = Column("circonscription", String)
+    siege_number = Column("siege_number", INTEGER)
+    mail = Column("mail", String)
+    twitter = Column("twitter", String)
+    facebook = Column("facebook", String)
+    instagram = Column("instagram", String)
+    linkedin = Column("linkedin", String)
+    lien_interet = Column("line_interet", String)
+    collaborateurs = Column("collaborateurs", String)
+    date_election = Column("date_election", DATE)
+    date_debut_mandat = Column("date_debut_mandat", DATE)
+    #TODO Store Travaux Parlementaire
+
+    def __init__(self, deputes):
+        self.ids = deputes["ids"]
+        self.name = deputes["name"]
+        self.photo = deputes["photo"]
+        self.group = deputes["group"]
+        self.mandat = deputes["mandat"]
+        self.birthdate = deputes["birthdate"]
+        self.profession = deputes["profession"]
+        self.commission = deputes["commission"]
+        self.suppleant = deputes["suppleant"]
+        self.rattachement_finance = deputes["rattachement_finance"]
+        self.an_adress = deputes["an_adress"]
+        self.circonscription = deputes["circonscription"]
+        self.siege_number = deputes["siege_number"]
+        self.mail = deputes["mail"]
+        self.twitter = deputes["twitter"]
+        self.facebook = deputes["facebook"]
+        self.instagram = deputes["instagram"]
+        self.linkedin = deputes["linkedin"]
+        self.lien_interet = deputes["lien_interet"]
+        self.collaborateurs = deputes["collaborateurs"]
+        self.date_election = deputes["date_election"]
+        self.date_debut_mandat = deputes["date_debut_mandat"]
+    
+    def __repr__(self):
+        return f'(Depute {self.name})'
+
 # modified version because different class name
 def next_page_an(page):
     try:
@@ -209,11 +263,12 @@ def deputes():
             birth = match.group()
             birthdate = datetime.strptime(birth, "%d %B %Y")
         profession = info[0].parent.find('p').text.replace(')', ')$').split('$')[1].strip()
+        #TODO check if changed commission
         current_commission = info[1].parent.find('a').text.strip()
         if len(info) == 4:
             suppleant = ''
             rattachement_finance = info[2].parent.find_all('span')[-1].text.strip()
-            adress = info[3].parent.find_all('li')
+            adresses = info[3].parent.find_all('li')
         else:
             suppleant = info[2].parent.find_all('span')[-1].text.strip()
             rattachement_finance = info[3].parent.find_all('span')[-1].text.strip()
