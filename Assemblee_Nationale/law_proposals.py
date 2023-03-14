@@ -1,5 +1,6 @@
 import re
-from sqlalchemy import Column, Integer, String, DATE, TEXT, Float
+from sqlalchemy import create_engine, Column, Integer, String, DATE, TEXT
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 from soup import make_request, next_page
@@ -9,13 +10,16 @@ import locale
 # Needed to translate date
 locale.setlocale(locale.LC_TIME, "fr_FR.UTF-8")
 
+# create a database connection
+engine = create_engine('sqlite:///votes.db')
+Session = sessionmaker(bind=engine)
+
 Base = declarative_base()
 
 class Law_proposals(Base):
     __tablename__ = 'law_proposals'
 
-    ids = Column("id", Integer, primary_key=True)
-    number = Column("number", Integer)
+    number = Column("number", Integer, primary_key=True)
     title = Column("title", String)
     link = Column("link", String)
     date = Column("date", DATE)
@@ -32,6 +36,31 @@ class Law_proposals(Base):
 
     def __repr__(self):
         return f'(Loi {self.number} {self.title})'
+
+#Create the table in the database
+Base.metadata.create_all(engine)
+
+def save_to_database(data: dict, Model):
+    """
+    Save data to a database using the provided session and model.
+    :param data: dictionary containing data to be saved
+    :param model: SQLAlchemy model class
+    :return: None
+    """
+    # open a new database session
+    session = Session()
+    # retrieve the row you want to check by its id and sort it by date
+    law = session.query(Model).filter_by(number=data["number"]).first()
+    if law:
+        return
+    # create a new user object
+    new_data = Model(data)
+    # add the user to the session
+    session.add(new_data)
+    # commit the changes to the database
+    session.commit()
+    # close the session
+    session.close()
 
 def law_proposals():
     url = 'https://www2.assemblee-nationale.fr/documents/liste/(type)/propositions-loi'
@@ -80,6 +109,8 @@ def law_proposals():
                     data['cosigner'] = modal[0].text.strip()
                     for cosign in modal[1:]:
                         data['cosigner'] = data['cosigner'] + ', ' + cosign.text.strip()
+            
+            save_to_database(data, Law_proposals)
 
         # Get next page
         url = next_page(soup)
