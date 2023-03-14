@@ -35,9 +35,36 @@ class Commission(Base):
         self.membres = commission["membres"]
         self.date = commission["date"]
 
-    
     def __repr__(self):
         return f'(Commission {self.name})'
+
+class CommissionWork(Base):
+    __tablename__ = 'commission_work'
+
+    ids = Column("id", Integer, primary_key=True)
+    commission = Column("commission", String)
+    title = Column("title", String)
+    date = Column("date", DATE)
+    session = Column("session", String)
+    corps = Column("corps", TEXT)
+    link = Column("link", String)
+    present = Column("present", TEXT)
+    absent = Column("absent", TEXT)
+    assiste = Column("assiste", TEXT)
+
+    def __init__(self, data):
+        self.commission = data["commission"]
+        self.title = data["title"]
+        self.date = data["date"]
+        self.session = data["session"]
+        self.corps = data["corps"]
+        self.link = data["link"]
+        self.present = data["present"]
+        self.absent = data["absent"]
+        self.assiste = data["assiste"]
+
+    def __repr__(self):
+        return f'(Compte rendu {self.title})'
 
 #Create the table in the database
 Base.metadata.create_all(engine)
@@ -60,7 +87,33 @@ def save_compo_to_database(data: dict, Model):
             commission.membres == data['membres'] and
             commission.secretaires == data['secretaires'] and
             commission.rapporteur == data['rapporteur']):
-            print('All columns except for date are the same')
+            print('Commission Composition not changed')
+            return
+    # create a new user object
+    new_data = Model(data)
+    # add the user to the session
+    session.add(new_data)
+    # commit the changes to the database
+    session.commit()
+    # close the session
+    session.close()
+
+def save_crc_to_database(data: dict, Model):
+    """
+    Save data to a database using the provided session and model.
+    :param data: dictionary containing data to be saved
+    :param model: SQLAlchemy model class
+    :return: None
+    """
+    #print(f'{data["name"]}')
+    # open a new database session
+    session = Session()
+    commission_work = session.query(Model).filter_by(title=data["title"]).order_by(Model.date.desc()).first()
+    if commission_work != None:
+        # compare all columns except for the date column
+        if (commission_work.title == data['title'] and
+            commission_work.session == data['session']):
+            print('Compte rendu already in DB')
             return
     # create a new user object
     new_data = Model(data)
@@ -81,7 +134,6 @@ def composition(url):
     composition['name'] = page.find('span', class_='h1').text.strip()
     today = datetime.today().strftime('%d/%m/%Y')
     composition['date'] = datetime.strptime(today, "%d/%m/%Y")
-    print(f'{composition["name"]}')
     composition['president'] = div[0].find('span', class_='h5').text.strip()
     composition['rapporteur'] = ''
     if len(div) == 4:
@@ -119,6 +171,9 @@ def presence(url):
     iframe = make_request('https://www.assemblee-nationale.fr' + page.find('iframe')['src'])
     presence = iframe.find().find_all('p')
     worker = {}
+    worker['present'] = ''
+    worker['absent'] = ''
+    worker['assiste'] = ''
     for x in presence:
         if x.text.strip().startswith("Présent"):
             tmp = x.text.strip().replace('\xa0', ' ')
@@ -136,6 +191,7 @@ def crc(url):
     while True:
         page = make_request(url)
         test = page.find_all('li', class_='ha-grid-item _size-3')
+        crc['commission'] = page.find('span', class_='h1').text.strip()
         for li in test:
             crc['title'] = li.find('span', class_='h5').text.strip()
             date = li.find('span', class_='_colored-primary').text.strip()
@@ -143,8 +199,10 @@ def crc(url):
             crc['session'] = li.find('span', class_='_colored-travaux').text.strip()
             crc['corps'] = li.find('p').text.strip()
             crc['link'] = 'https://www.assemblee-nationale.fr' + li.find('a')['href']
-            crc['presence'] = presence(crc['link'])
-        
+            present = presence(crc['link'])
+            crc.update(present)
+            save_crc_to_database(crc, CommissionWork)
+                
         # Get next page
         pagination = page.find('div', class_='an-pagination')
         try:
@@ -169,12 +227,10 @@ def commissions():
         url = 'https://www.assemblee-nationale.fr' + link['href']
         page = make_request(url)
         composition_link = 'https://www.assemblee-nationale.fr' + page.find('a', class_='composition-link')['href']
-        print(composition_link)
         compo = composition(composition_link)
         save_compo_to_database(compo, Commission)
         # Extract Comptes Rendus
         crc_url = 'https://www.assemblee-nationale.fr' + page.find('section', id='comptes_rendus_des_reunions').find('a', class_='link')['href']
-        print(crc_url)
-        #data = crc(crc_url)
+        data = crc(crc_url)
 
 commissions()

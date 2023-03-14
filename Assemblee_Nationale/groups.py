@@ -55,7 +55,7 @@ def save_to_database(data: dict, Model):
             group.members == data['members'] and
             group.affiliates == data['affiliates'] and
             group.number == data['number_deputes']):
-            print('All columns except for date are the same')
+            print('Group composition not changed')
             return
     # create a new user object
     new_data = Model(data)
