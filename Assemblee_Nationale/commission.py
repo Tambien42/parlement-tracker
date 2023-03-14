@@ -1,6 +1,6 @@
 import re
-from datetime import date
-from sqlalchemy import create_engine, Column, Integer, String, DATE, INTEGER, TEXT, Float, JSON
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, Column, Integer, String, DATE, TEXT
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 from soup import make_request
@@ -10,24 +10,66 @@ import locale
 # Needed to translate date
 locale.setlocale(locale.LC_TIME, "fr_FR.UTF-8")
 
+# create a database connection
+engine = create_engine('sqlite:///votes.db')
+Session = sessionmaker(bind=engine)
+
 Base = declarative_base()
 
 class Commission(Base):
-    __tablename__ = 'groups'
+    __tablename__ = 'commission'
 
     ids = Column("id", Integer, primary_key=True)
     name = Column("name", String)
-    composition = Column("composition", TEXT)
+    president = Column("president", TEXT)
+    rapporteur = Column("rapporteur", TEXT)
+    secretaires = Column("secretaires", TEXT)
+    membres = Column("membres", TEXT)
     date = Column("date", DATE)
 
     def __init__(self, commission):
         self.name = commission["name"]
-        self.composition = commission["composition"]
+        self.president = commission["president"]
+        self.rapporteur = commission["rapporteur"]
+        self.secretaires = commission["secretaires"]
+        self.membres = commission["membres"]
         self.date = commission["date"]
 
     
     def __repr__(self):
         return f'(Commission {self.name})'
+
+#Create the table in the database
+Base.metadata.create_all(engine)
+
+def save_compo_to_database(data: dict, Model):
+    """
+    Save data to a database using the provided session and model.
+    :param data: dictionary containing data to be saved
+    :param model: SQLAlchemy model class
+    :return: None
+    """
+    #print(f'{data["name"]}')
+    # open a new database session
+    session = Session()
+    commission = session.query(Model).filter_by(name=data["name"]).order_by(Model.date.desc()).first()
+    if commission != None:
+        # compare all columns except for the date column
+        if (commission.name == data['name'] and
+            commission.president == data['president'] and
+            commission.membres == data['membres'] and
+            commission.secretaires == data['secretaires'] and
+            commission.rapporteur == data['rapporteur']):
+            print('All columns except for date are the same')
+            return
+    # create a new user object
+    new_data = Model(data)
+    # add the user to the session
+    session.add(new_data)
+    # commit the changes to the database
+    session.commit()
+    # close the session
+    session.close()
 
 #TODO get old composition with date?
 # def to get composition of commission
@@ -36,7 +78,12 @@ def composition(url):
     section = page.find('section', class_='an-section printable')
     div = section.find('div', class_='_gutter-ms _vertical').find_all('div', recursive=False)
     composition = {}
+    composition['name'] = page.find('span', class_='h1').text.strip()
+    today = datetime.today().strftime('%d/%m/%Y')
+    composition['date'] = datetime.strptime(today, "%d/%m/%Y")
+    print(f'{composition["name"]}')
     composition['president'] = div[0].find('span', class_='h5').text.strip()
+    composition['rapporteur'] = ''
     if len(div) == 4:
         vp = div[1].find_all('span', class_='h5')
         composition['vps'] = vp[0].text.strip()
@@ -84,7 +131,6 @@ def presence(url):
             worker['assiste'] = re.split(' – | – | - | - | - | - ', tmp)[-1]
     return worker
 
-#TODO save data to database in this function
 def crc(url):
     crc = {}
     while True:
@@ -92,7 +138,6 @@ def crc(url):
         test = page.find_all('li', class_='ha-grid-item _size-3')
         for li in test:
             crc['title'] = li.find('span', class_='h5').text.strip()
-            print(f'{crc["title"]}')
             date = li.find('span', class_='_colored-primary').text.strip()
             crc['date'] = datetime.strptime(date, "%A %d %B %Y")
             crc['session'] = li.find('span', class_='_colored-travaux').text.strip()
@@ -124,7 +169,12 @@ def commissions():
         url = 'https://www.assemblee-nationale.fr' + link['href']
         page = make_request(url)
         composition_link = 'https://www.assemblee-nationale.fr' + page.find('a', class_='composition-link')['href']
-        composition = composition(composition_link)
+        print(composition_link)
+        compo = composition(composition_link)
+        save_compo_to_database(compo, Commission)
         # Extract Comptes Rendus
         crc_url = 'https://www.assemblee-nationale.fr' + page.find('section', id='comptes_rendus_des_reunions').find('a', class_='link')['href']
-        data = crc(crc_url)
+        print(crc_url)
+        #data = crc(crc_url)
+
+commissions()
