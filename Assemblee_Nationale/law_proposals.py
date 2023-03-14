@@ -19,7 +19,7 @@ Base = declarative_base()
 class Law_proposals(Base):
     __tablename__ = 'law_proposals'
 
-    number = Column("number", Integer, primary_key=True)
+    number = Column("number", Integer, primary_key=True, autoincrement=False)
     title = Column("title", String)
     link = Column("link", String)
     date = Column("date", DATE)

@@ -1,8 +1,13 @@
 import re
-from sqlalchemy import Column, Integer, String, DATE, TEXT, Float
+from sqlalchemy import create_engine, Column, Integer, DATE, TEXT, Float
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 from soup import make_request, next_page
+
+# create a database connection
+engine = create_engine('sqlite:///votes.db')
+Session = sessionmaker(bind=engine)
 
 Base = declarative_base()
 
@@ -36,6 +41,31 @@ class Scrutins(Base):
     def __repr__(self):
         return f'(Scrutins n {self.number} {self.object})'
 
+#Create the table in the database
+Base.metadata.create_all(engine)
+
+def save_to_database(data: dict, Model):
+    """
+    Save data to a database using the provided session and model.
+    :param data: dictionary containing data to be saved
+    :param model: SQLAlchemy model class
+    :return: None
+    """
+    # open a new database session
+    session = Session()
+    # retrieve the row you want to check by its id and sort it by date
+    scrutin = session.query(Model).filter_by(number=data["number"]).first()
+    if scrutin:
+        return
+    # create a new user object
+    new_data = Model(data)
+    # add the user to the session
+    session.add(new_data)
+    # commit the changes to the database
+    session.commit()
+    # close the session
+    session.close()
+
 # Scrape Scrutins Data
 #TODO function do put non votant status in fiche depute
 def scrutins():
@@ -57,7 +87,6 @@ def scrutins():
             # Extract the votes data from the cells
             scrutins['number'] = re.sub("[^0-9]", "", cells[0].text)
             scrutins['date'] = datetime.strptime(cells[1].text, "%d/%m/%Y")
-            print(f'date: {scrutins["date"]}')
             scrutins['object'] = re.sub(r'\[.*?\]', '', cells[2].text).strip()
             scrutins['votes_for'] = cells[3].text
             scrutins['votes_against'] = cells[4].text
@@ -85,11 +114,15 @@ def scrutins():
                     for n in gr[1:]:
                         nb_votes = nb_votes + int(n.find('b').text)
                 scrutins['group_vote'] = scrutins['group_vote'] + ' ;' + group + ',' + str(nb_votes)
+            tmp = scrutins['group_vote'].split(';')
+            tmp.pop(0)
+            scrutins['group_vote'] = ';'.join(tmp)
 
             # Calculations
             scrutins['total_votes'] = int(scrutins['votes_for']) + int(scrutins['votes_against']) + int(scrutins['votes_abstention']) + int(scrutins['non_votants'])
             pourcentage_participation = float((scrutins['total_votes'] / 577) * 100)
             scrutins['pourcentage_abstention'] = round(100 - pourcentage_participation, 2)
+            save_to_database(scrutins, Scrutins)
 
         # Get next page
         url = next_page(soup)
