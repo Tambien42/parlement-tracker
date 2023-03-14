@@ -1,8 +1,13 @@
 import re
-from sqlalchemy import create_engine, Column, Integer, String, DATE, INTEGER, TEXT, Float
+from sqlalchemy import create_engine, Column, Integer, String, Date
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from soup import make_request, next_page
 from datetime import datetime
+
+# create a database connection
+engine = create_engine('sqlite:///votes.db')
+Session = sessionmaker(bind=engine)
 
 Base = declarative_base()
 
@@ -17,8 +22,8 @@ class Questions(Base):
     name = Column("name", String)
     title = Column("title", String)
     ministry = Column("ministry", String)
-    asked_date = Column("asked_date", String)
-    answered_date = Column("answered_date", String)
+    asked_date = Column("asked_date", Date)
+    answered_date = Column("answered_date", Date)
 
     def __init__(self, question):
         self.ids = question["id"]
@@ -35,6 +40,35 @@ class Questions(Base):
     
     def __repr__(self):
         return f'(Commission n {self.name})'
+
+#Create the table in the database
+Base.metadata.create_all(engine)
+
+def save_to_database(data: dict, Model):
+    """
+    Save data to a database using the provided session and model.
+    :param data: dictionary containing data to be saved
+    :param model: SQLAlchemy model class
+    :return: None
+    """
+    #print(f'{data["name"]}')
+    # open a new database session
+    session = Session()
+    # retrieve the row you want to check by its id and sort it by date
+    question = session.query(Questions).filter_by(ids=data["id"]).first()
+    if question:
+        if question.answered_date != data['answered_date']:
+            question.answered_date = data['answered_date']
+
+        return
+    # create a new user object
+    new_data = Model(data)
+    # add the user to the session
+    session.add(new_data)
+    # commit the changes to the database
+    session.commit()
+    # close the session
+    session.close()
 
 def questions():
     # Parse the HTML content
@@ -68,11 +102,12 @@ def questions():
             questions["asked_date"] = datetime.strptime(asked_date, "%d/%m/%Y")
             # Extract answered Date
             if column[2].find('form'):
-                questions["answered_date"] = 'en attente de réponse'
+                questions["answered_date"] = None
             else:
                 answered_date = column[2].find_all('strong')[-1].text
                 questions["answered_date"] = datetime.strptime(answered_date, "%d/%m/%Y")
-    
+
+            save_to_database(questions, Questions)
         # Get next page
         url = next_page(soup)
         # Check if there is a next page

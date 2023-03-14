@@ -1,9 +1,8 @@
 import re
-from datetime import date
-from sqlalchemy import create_engine, Column, Integer, String, DATE, INTEGER, TEXT, Float
+from sqlalchemy import create_engine, Column, String, DATE, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
-from soup import make_request, next_page
+from soup import make_request
 import locale
 
 # Set the locale to French
@@ -26,7 +25,7 @@ class Deputes(Base):
     rattachement_finance = Column("rattachement_finance", String)
     an_adress = Column("an_adress", String)
     circonscription = Column("circonscription", String)
-    siege_number = Column("siege_number", INTEGER)
+    siege_number = Column("siege_number", Integer)
     mail = Column("mail", String)
     twitter = Column("twitter", String)
     facebook = Column("facebook", String)
@@ -75,17 +74,21 @@ def next_page_an(page):
     except:
         return None
 
+#TODO save old deputes in db
 # get info on deputes that have resigned before launching the project
 # find the name https://www.nosdeputes.fr/deputes
 def old_deputes():
     url = 'https://www.nosdeputes.fr/deputes'
     soup = make_request(url)
     old = soup.find_all('div', class_='anciens')
+    list = []
     for i in old:
         url = 'https://www.nosdeputes.fr' + i.parent['href']
         name = i.parent.find_all("span")[1].text.strip()
         soup = make_request(url)
         href = soup.find('div', class_='contenu_depute').find('div', id='b1').find('ul').find('ul').find('li').find('a')['href']
+        list.append(href)
+    return list
 
 # Extract questions from a depute
 def depute_questions(url):
@@ -262,7 +265,7 @@ def deputes():
         # Extract depute info
         ids = soup.find('section', class_='an-section').find("a")['href'].split('/')[-1]
         name = soup.find("h1").text.strip()
-        #TODO download photo
+        #TODO download photo and store path
         photo = soup.find('div', class_='acteur-photo-image').find('img')['src']
         group = soup.find("a", class_='h4').text.strip()
         mandat = soup.find('section').find_all('div')[-1].find_all('span')[-1].text.replace('|', '').strip()

@@ -1,7 +1,7 @@
-from sqlalchemy import create_engine, Column, Integer, String, DATE, INTEGER, TEXT, Float
+from sqlalchemy import create_engine, Column, Integer, String, DATE, TEXT
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
-from soup import make_request, next_page
+from soup import make_request
 from datetime import datetime
 
 # create a database connection
@@ -9,36 +9,6 @@ engine = create_engine('sqlite:///votes.db')
 Session = sessionmaker(bind=engine)
 
 Base = declarative_base()
-
-def save_to_database(data: dict, model):
-    """
-    Save data to a database using the provided session and model.
-    :param data: dictionary containing data to be saved
-    :param model: SQLAlchemy model class
-    :return: None
-    """
-    #print(f'{data["name"]}')
-    # open a new database session
-    session = Session()
-    # retrieve the row you want to check by its id
-    group = session.query(Groups).filter_by(name=data["name"]).order_by(Groups.date.desc()).first()
-    if group != None:
-        # compare all columns except for the date column
-        if (group.name == data['name'] and
-            group.president == data['president'] and
-            group.members == data['members'] and
-            group.affiliates == data['affiliates'] and
-            group.number == data['number_deputes']):
-            print('All columns except for date are the same')
-            return
-    # create a new user object
-    new_data = model(data)
-    # add the user to the session
-    session.add(new_data)
-    # commit the changes to the database
-    session.commit()
-    # close the session
-    session.close()
 
 class Groups(Base):
     __tablename__ = 'groups'
@@ -65,6 +35,36 @@ class Groups(Base):
 
 #Create the table in the database
 Base.metadata.create_all(engine)
+
+def save_to_database(data: dict, Model):
+    """
+    Save data to a database using the provided session and model.
+    :param data: dictionary containing data to be saved
+    :param model: SQLAlchemy model class
+    :return: None
+    """
+    #print(f'{data["name"]}')
+    # open a new database session
+    session = Session()
+    # retrieve the row you want to check by its id and sort it by date
+    group = session.query(Groups).filter_by(name=data["name"]).order_by(Groups.date.desc()).first()
+    if group != None:
+        # compare all columns except for the date column
+        if (group.name == data['name'] and
+            group.president == data['president'] and
+            group.members == data['members'] and
+            group.affiliates == data['affiliates'] and
+            group.number == data['number_deputes']):
+            print('All columns except for date are the same')
+            return
+    # create a new user object
+    new_data = Model(data)
+    # add the user to the session
+    session.add(new_data)
+    # commit the changes to the database
+    session.commit()
+    # close the session
+    session.close()
 
 def groups():
     url = 'https://www2.assemblee-nationale.fr/16/les-groupes-politiques'
@@ -124,5 +124,3 @@ def groups():
                 groups['affiliates'] = groups['affiliates'] + ', ' + a.text.replace('\xa0', ' ')
         save_to_database(groups, Groups)
     print('Groups Done')
-
-groups()
