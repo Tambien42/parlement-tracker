@@ -76,7 +76,6 @@ def save_compo_to_database(data: dict, Model):
     :param model: SQLAlchemy model class
     :return: None
     """
-    #print(f'{data["name"]}')
     # open a new database session
     session = Session()
     commission = session.query(Model).filter_by(name=data["name"]).order_by(Model.date.desc()).first()
@@ -87,7 +86,6 @@ def save_compo_to_database(data: dict, Model):
             commission.membres == data['membres'] and
             commission.secretaires == data['secretaires'] and
             commission.rapporteur == data['rapporteur']):
-            print('Commission Composition not changed')
             return
     # create a new user object
     new_data = Model(data)
@@ -105,7 +103,6 @@ def save_crc_to_database(data: dict, Model):
     :param model: SQLAlchemy model class
     :return: None
     """
-    #print(f'{data["name"]}')
     # open a new database session
     session = Session()
     commission_work = session.query(Model).filter_by(title=data["title"]).order_by(Model.date.desc()).first()
@@ -113,7 +110,6 @@ def save_crc_to_database(data: dict, Model):
         # compare all columns except for the date column
         if (commission_work.title == data['title'] and
             commission_work.session == data['session']):
-            print('Compte rendu already in DB')
             return
     # create a new user object
     new_data = Model(data)

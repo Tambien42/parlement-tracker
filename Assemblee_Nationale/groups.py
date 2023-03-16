@@ -43,7 +43,6 @@ def save_to_database(data: dict, Model):
     :param model: SQLAlchemy model class
     :return: None
     """
-    #print(f'{data["name"]}')
     # open a new database session
     session = Session()
     # retrieve the row you want to check by its id and sort it by date
@@ -55,7 +54,6 @@ def save_to_database(data: dict, Model):
             group.members == data['members'] and
             group.affiliates == data['affiliates'] and
             group.number == data['number_deputes']):
-            print('Group composition not changed')
             return
     # create a new user object
     new_data = Model(data)
