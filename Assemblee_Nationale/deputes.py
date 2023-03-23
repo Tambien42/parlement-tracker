@@ -18,11 +18,12 @@ Base = declarative_base()
 class Deputes(Base):
     __tablename__ = 'deputes'
 
-    ids = Column("id", String, primary_key=True, autoincrement=False)
+    id_ = Column("id", String, primary_key=True, autoincrement=False)
     name = Column("name", String)
     photo = Column("photo", String)
     group = Column("group", String)
-    mandat = Column("mandat", String)
+    mandat_fin = Column("mandat_fin", DATE)
+    raison = Column("raison", String)
     birthdate = Column("birthdate", DATE)
     profession = Column("profession", String)
     commission = Column("commission", String)
@@ -48,11 +49,12 @@ class Deputes(Base):
     commission_presence = Column("commission_presence", Text)
 
     def __init__(self, deputes):
-        self.ids = deputes["ids"]
+        self.id_ = deputes["id"]
         self.name = deputes["name"]
         self.photo = deputes["photo"]
         self.group = deputes["group"]
-        self.mandat = deputes["mandat"]
+        self.mandat_fin = deputes["mandat_fin"]
+        self.raison = deputes["raison"]
         self.birthdate = deputes["birthdate"]
         self.profession = deputes["profession"]
         self.commission = deputes["current_commission"]
@@ -82,7 +84,26 @@ class Deputes(Base):
 
 #Create the table in the database
 Base.metadata.create_all(engine)
+def update_example(name, value):
+    session = Session()
 
+    # Check if the data is in the database
+    data = session.query(Example).filter(Example.name == name).first()
+    if data:
+        # If the data is in the database and the value has changed, modify it
+        if data.value != value:
+            data.value = value
+            session.commit()
+            print("Data modified successfully")
+        else:
+            print("Data already exists and has not changed")
+    else:
+        # If the data is not in the database, add it
+        data = Example(name=name, value=value)
+        session.add(data)
+        session.commit()
+        print("Data added successfully")
+        
 def save_to_database(data: dict, Model):
     """
     Save data to a database using the provided session and model.
@@ -180,9 +201,23 @@ def depute_commission(url):
     table = []
     while True:
         soup = make_request(url)
+        name = soup.find("h1").text.strip()
         list = soup.find_all('section')[-1].find('ul').find_all('li', recursive=False)
         for li in list:
-            table.append(li.find("a").text.strip())
+            url_cr = 'https://www2.assemblee-nationale.fr' + li.find("a")['href']
+            cr = make_request(url_cr)
+            iframe = cr.find('iframe')
+            if iframe:
+                url_iframe = 'https://www.assemblee-nationale.fr' + iframe['src']
+                page = make_request(url_iframe)
+                presence = page.find_all('p')
+                for x in presence:
+                    if x.text.strip().startswith("Présent"):
+                        tmp = x.text.strip().replace('\xa0', ' ').split(', ')
+                        if name in tmp or name in tmp[0]:
+                            table.append(li.find("a").text.strip())
+            else:
+                table.append(li.find("a").text.strip())
 
         # Get next page
         url = next_page_an(soup)
@@ -211,8 +246,8 @@ def depute_votes(url):
 
 #TODO return data
 # Extract all travaux parlementaires
-def travaux(ids):
-    url  = 'https://www2.assemblee-nationale.fr/dyn/deputes/' + ids + '/travaux-parlementaires'
+def travaux(id_):
+    url  = 'https://www2.assemblee-nationale.fr/dyn/deputes/' + id_ + '/travaux-parlementaires'
     soup = make_request(url)
 
     section = soup.find('section', id='actualite_parlementaire').find('div', class_='ha-grid').find_all('div', class_='ha-grid-item')
@@ -238,7 +273,7 @@ def travaux(ids):
 
     section = soup.find('main').find_all('section')[-1].find('div', class_='ha-grid').find_all('div', class_='ha-grid-item')
     commission_depute = ''
-    commission_depute = ''
+    votes_depute = ''
     for type in section:
         title = type.find("div", class_="bloc-title").text.strip()
         url = 'https://www2.assemblee-nationale.fr' + type.find('a')['href']
@@ -299,84 +334,141 @@ def deputes():
 
     # Parse the HTML content
     soup = make_request(url)
-    # Find the table containing the data
-    list = soup.find('div', id='deputes-list').find_all('li')
-
+     # Find the table containing the data
+    table = soup.find('div', id='deputes-list').find_all('li')
+    #list = old_deputes()
+    #TODO get list from url + get old depute from database
+    list = []
+    for li in table:
+        list.append(li.find('a')['href'].split('/')[-1])
+    
+    #list = ['OMC_PA605036', 'OMC_PA722190']
     depute = {}
-    for depute in list:
-        url = 'https://www2.assemblee-nationale.fr' + depute.find('a')['href']
+    for fiche in list:
+        url = 'https://www2.assemblee-nationale.fr/deputes/fiche/' + fiche
         soup = make_request(url)
 
         # Extract depute info
-        depute['ids'] = soup.find('section', class_='an-section').find("a")['href'].split('/')[-1]
         depute['name'] = soup.find("h1").text.strip()
         print(f'{depute["name"]}')
+        depute['id'] = soup.find("h1").parent['href'].split('/')[-1]
         #TODO download photo and store path
         depute['photo'] = soup.find('div', class_='acteur-photo-image').find('img')['src']
         depute['group'] = soup.find("a", class_='h4').text.strip()
-        depute['mandat'] = soup.find('section').find_all('div')[-1].find_all('span')[-1].text.replace('|', '').strip()
-        section2 = soup.find_all('section')[1]
-        info = section2.find('div', class_='ha-grid-item').find('div', class_='bloc-content').find_all('span', class_='h5')
-        depute['birthdate'] = ''
-        depute['current_commission'] = ''
-        depute['suppleant'] = ''
-        depute['rattachement_finance'] = ''
-        depute['circonscription_adress'] = ''
-        #TODO log empty variable to manually check
-        for i in info:
-            if i.text.strip().startswith("Biographie"):
-                date = i.parent.find('p').text.replace(')', ')$').split('$')[0].strip()
-                match = re.search(r'\d{1,2}\s+\w+\s+\d{4}', date)
-                if match:
-                    birth = match.group()
-                    depute['birthdate'] = datetime.strptime(birth, "%d %B %Y")
-                depute['profession'] = i.parent.find('p').text.replace(')', ')$').split('$')[1].strip()
-            
-            if i.text.strip().startswith("Commission"):
-                depute['current_commission'] = i.parent.find('a').text.strip()
-            
-            if i.text.strip().startswith("Suppléant"):
-                depute['suppleant'] = i.parent.find_all('span')[-1].text.strip()
-            
-            if i.text.strip().startswith("Rattachement"):
-                depute['rattachement_finance'] = i.parent.find_all('span')[-1].text.strip()
-            
-            if i.text.strip().startswith("Adresse"):
-                adresses = i.parent.find('ul').find_all('li')
-                for a in adresses:
-                    if a.find('span') and a.find('span').text.strip().startswith("En circonscription"):
-                        depute["circonscription_adress"] = a.find_all('span')[-1].text.strip()
+        mandat = soup.find('section').find_all('div')[-1].find_all('span')[-1].text.replace('|', '').strip()
+        if mandat == 'Mandat en cours':
+            depute['mandat_fin'] = ''
+            depute['raison'] = ''
 
-        departement = section2.find_all('div', class_='ha-grid-item')[1].find_all('a')[-1]['href'].split('/')[-1].split('?')[0].strip()
-        circonscription_number = section2.find_all('div', class_='ha-grid-item')[1].find_all('a')[-1]['href'].split('/')[-1].split('=')[-1].strip()
-        depute['circonscription'] = departement + '-' + circonscription_number
-        depute['siege_number'] = section2.find_all('div', class_='ha-grid-item')[2].find_all('a')[-1]['href'].split('=')[-1].strip()
-        depute['mail'] = section2.find('ul', class_='pipe-list').find('a')['href'].split(':')[-1].strip()
-        depute['twitter'] = ''
-        depute['facebook'] = ''
-        depute['instagram'] = ''
-        depute['linkedin'] = ''
-        if soup.find('div', class_='right-menu'):
-            for i in soup.find("div", class_="right-menu").find_all("li"):
-                if i.find("i")["class"][-1].split("-")[-1] == 'twitter':
-                    depute['twitter'] = i.find('a')['href'].strip() 
-                if i.find("i")["class"][-1].split("-")[-1] == 'facebook':
-                    depute['facebook'] = i.find('a')['href'].strip()
-                if i.find("i")["class"][-1].split("-")[-1] == 'instagram':
-                    depute['instagram'] = i.find('a')['href'].strip() 
-                if i.find("i")["class"][-1].split("-")[-1] == 'linkedin':
-                    depute['linkedin'] = i.find('a')['href'].strip()
-        depute['lien_interet'] = section2.find_all('div', class_='ha-grid-item')[4].find('a')['href'].strip()
-        collabo = section2.find_all('div')[-1].find_all('li')
-        depute['collaborateurs'] = collabo[0].text.strip()
-        for c in collabo:
-            depute['collaborateurs'] = depute['collaborateurs'] + ', ' + c.text.strip()
+            section2 = soup.find_all('section')[1]
+            info = section2.find('div', class_='ha-grid-item').find('div', class_='bloc-content').find_all('span', class_='h5')
+            depute['birthdate'] = ''
+            depute['current_commission'] = ''
+            depute['suppleant'] = ''
+            depute['rattachement_finance'] = ''
+            depute['circonscription_adress'] = ''
+            for i in info:
+                if i.text.strip().startswith("Biographie"):
+                    date = i.parent.find('p').text.replace(')', ')$').split('$')[0].strip()
+                    match = re.search(r'\d{1,2}\s+\w+\s+\d{4}', date)
+                    if match:
+                        birth = match.group()
+                        depute['birthdate'] = datetime.strptime(birth, "%d %B %Y")
+                    depute['profession'] = i.parent.find('p').text.replace(')', ')$').split('$')[1].strip()
+                
+                if i.text.strip().startswith("Commission"):
+                    depute['current_commission'] = i.parent.find('a').text.strip()
+                
+                if i.text.strip().startswith("Suppléant"):
+                    depute['suppleant'] = i.parent.find_all('span')[-1].text.strip()
+                
+                if i.text.strip().startswith("Rattachement"):
+                    depute['rattachement_finance'] = i.parent.find_all('span')[-1].text.strip()
+                
+                if i.text.strip().startswith("Adresse"):
+                    adresses = i.parent.find('ul').find_all('li')
+                    for a in adresses:
+                        if a.find('span') and a.find('span').text.strip().startswith("En circonscription"):
+                            depute["circonscription_adress"] = a.find_all('span')[-1].text.strip()
+                
+                departement = section2.find_all('div', class_='ha-grid-item')[1].find_all('a')[-1]['href'].split('/')[-1].split('?')[0].strip()
+                circonscription_number = section2.find_all('div', class_='ha-grid-item')[1].find_all('a')[-1]['href'].split('/')[-1].split('=')[-1].strip()
+                depute['circonscription'] = departement + '-' + circonscription_number
+                depute['siege_number'] = ''
+                if soup.find('a', href=re.compile("/dyn/hemicycle")):
+                    depute['siege_number'] = soup.find('a', href=re.compile("/dyn/hemicycle"))['href'].split('=')[-1].strip()
+                depute['mail'] = ''
+                if soup.find('a', href=re.compile("mailto")):
+                    depute['mail'] = soup.find('a', href=re.compile("mailto"))['href'].split(':')[-1]
+
+                depute['twitter'] = ''
+                depute['facebook'] = ''
+                depute['instagram'] = ''
+                depute['linkedin'] = ''
+                if soup.find('div', class_='right-menu'):
+                    for i in soup.find("div", class_="right-menu").find_all("li"):
+                        if i.find("i")["class"][-1].split("-")[-1] == 'twitter':
+                            depute['twitter'] = i.find('a')['href'].strip() 
+                        if i.find("i")["class"][-1].split("-")[-1] == 'facebook':
+                            depute['facebook'] = i.find('a')['href'].strip()
+                        if i.find("i")["class"][-1].split("-")[-1] == 'instagram':
+                            depute['instagram'] = i.find('a')['href'].strip() 
+                        if i.find("i")["class"][-1].split("-")[-1] == 'linkedin':
+                            depute['linkedin'] = i.find('a')['href'].strip()
+                
+                depute['lien_interet'] = soup.find('div', text=re.compile("Consulter la déclaration")).parent.parent.find('a')['href'].strip()
+                collabo = soup.find('span', text=re.compile("Collaborateurs")).parent.find_all('li')
+                depute['collaborateurs'] = collabo[0].text.strip()
+                for c in collabo[1:]:
+                    depute['collaborateurs'] = depute['collaborateurs'] + ', ' + c.text.strip()
+        else:
+            item = soup.find('span', text=re.compile("Date de fin de mandat"))
+            date = item.parent.find_all('span')[-1].text.replace('(', '|').replace(')', '').strip().split('|')[0]
+            # Define regular expression pattern to match the date
+            pattern = r"(\d{1,2}\s\w+\s\d{4})"
+            # Find the date in the string
+            match = re.search(pattern, date)
+            if match:
+                str = match.group(1)
+                date = datetime.strptime(str, "%d %B %Y")
+            else:
+                # handle the case where the regex didn't match
+                date = None
+                depute['mandat_fin'] = date
+                depute['raison'] = item.parent.find_all('span')[-1].text.replace('(', '|').replace(')', '').strip().split('|')[1]
+            
+            section2 = soup.find_all('section')[1]
+            info = section2.find('div', class_='ha-grid-item').find('div', class_='bloc-content').find_all('span', class_='h5')
+            depute['birthdate'] = ''
+            depute['current_commission'] = ''
+            depute['suppleant'] = ''
+            depute['rattachement_finance'] = ''
+            depute['circonscription_adress'] = ''
+            for i in info:
+                if i.text.strip().startswith("Biographie"):
+                    date = i.parent.find('p').text.replace(')', ')$').split('$')[0].strip()
+                    match = re.search(r'\d{1,2}\s+\w+\s+\d{4}', date)
+                    if match:
+                        birth = match.group()
+                        depute['birthdate'] = datetime.strptime(birth, "%d %B %Y")
+                    depute['profession'] = i.parent.find('p').text.replace(')', ')$').split('$')[1].strip()
+            
+            depute['circonscription'] = ''
+            depute['siege_number'] = ''
+            depute['mail'] = ''
+            depute['twitter'] = ''
+            depute['facebook'] = ''
+            depute['instagram'] = ''
+            depute['linkedin'] = ''
+            depute['lien_interet'] = ''
+            depute['collaborateurs'] = ''
 
         # Extract Election Date
-        depute['date_election'], depute['date_debut_mandat'] = dmandat(depute['ids'])
+        #depute['date_election'], depute['date_debut_mandat'] = dmandat(depute['id'])
 
         # Extract Travaux Parlementaires
-        depute['questions_depute'], depute['rapports_depute'], depute['author_depute'], depute['cosigner_depute'], depute['commission_depute'],depute['vote_depute'] = travaux(depute['ids'])
-        save_to_database(depute, Deputes)
+        depute['questions_depute'], depute['rapports_depute'], depute['author_depute'], depute['cosigner_depute'], depute['commission_depute'],depute['vote_depute'] = travaux(depute['id'])
+        #save_to_database(depute, Deputes)
+
         
 deputes()
