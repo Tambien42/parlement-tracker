@@ -165,7 +165,7 @@ def composition(url):
 def presence(url):
     page = make_request(url)
     iframe = make_request('https://www.assemblee-nationale.fr' + page.find('iframe')['src'])
-    presence = iframe.find().find_all('p')
+    presence = iframe.find_all('p')
     worker = {}
     worker['present'] = ''
     worker['absent'] = ''
