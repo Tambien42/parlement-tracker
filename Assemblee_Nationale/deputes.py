@@ -137,13 +137,16 @@ def next_page_an(page):
         return None
 
 # Extract questions from a depute
+#TODO replace full questions title by id ?
 def depute_questions(url):
     table = []
     while True:
         soup = make_request(url)
-        list = soup.find_all('section')[-1].find('ul').find_all('li', recursive=False)
+        list = soup.find('div', class_='embed-search-result').find('ul').find_all('li', recursive=False)
         for li in list:
             table.append(li.find("a").text.strip())
+            print(li.find("a").text.strip())
+            print(li.find("a")['href'].split('/')[-1].split('.')[0])
 
         # Get next page
         url = next_page_an(soup)
@@ -207,6 +210,7 @@ def depute_commission(url):
             url_cr = 'https://www2.assemblee-nationale.fr' + li.find("a")['href']
             cr = make_request(url_cr)
             iframe = cr.find('iframe')
+            table = []
             if iframe:
                 url_iframe = 'https://www.assemblee-nationale.fr' + iframe['src']
                 page = make_request(url_iframe)
@@ -264,14 +268,14 @@ def travaux(id_):
         if title == 'Questions':
             questions_depute = depute_questions(url)
         
-        if title == 'Rapports':
-            rapports_depute = depute_rapports(url)
+        # if title == 'Rapports':
+        #     rapports_depute = depute_rapports(url)
        
-        if title == 'Propositions (auteur)':
-            author_depute = depute_author(url)
+        # if title == 'Propositions (auteur)':
+        #     author_depute = depute_author(url)
 
-        if title == 'Propositions (cosignataire)':
-            cosigner_depute = depute_cosigner(url)
+        # if title == 'Propositions (cosignataire)':
+        #     cosigner_depute = depute_cosigner(url)
 
     section = soup.find('main').find_all('section')[-1].find('div', class_='ha-grid').find_all('div', class_='ha-grid-item')
     commission_depute = ''
@@ -284,11 +288,11 @@ def travaux(id_):
         # if title == 'Séance Publique':
         #     seance = 'Not Done'
         
-        if title == 'Commission':
-            commission_depute = depute_commission(url)
+        # if title == 'Commission':
+        #     commission_depute = depute_commission(url)
         
-        if title == 'Positions de vote':
-            votes_depute = depute_votes(url)
+        # if title == 'Positions de vote':
+        #     votes_depute = depute_votes(url)
 
     return questions_depute, rapports_depute, author_depute, cosigner_depute, commission_depute, votes_depute
 
@@ -342,11 +346,10 @@ def deputes():
     #TODO get list from url + get old depute from database
     #TODO get all ids from database and compare with list merge the two removing doublon
     list = []
-    #for li in table:
-     #   list.append(li.find('a')['href'].split('/')[-1])
+    for li in table:
+       list.append(li.find('a')['href'].split('/')[-1])
     
     #list = ['OMC_PA605036', 'OMC_PA722190']
-    list = ['OMC_PA793780']
     depute = {}
     for fiche in list:
         url = 'https://www2.assemblee-nationale.fr/deputes/fiche/' + fiche

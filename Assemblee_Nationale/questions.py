@@ -81,10 +81,8 @@ def questions():
         for row in rows:
             column = row.find_all('td')
             # ID type of quetion - number of the question - legislature
-            id = column[0].find('strong').text.split('-')
-            question = id[1]
-            questions["legislature"]= re.findall(r'\d+', id[0])[0]
-            questions["id"] = question.strip().replace(' ', '-') + '-' + questions["legislature"]
+            questions["id"] = column[0].find('a')['href'].split('/')[-1].split('.')[0]
+            questions["legislature"]= questions["id"].split('-')[0]
             # Extract Link
             questions["link"] = column[0].find('a')['href']
             # Extract the type of question
@@ -112,3 +110,4 @@ def questions():
         # Check if there is a next page
         if url is None:
             break
+
