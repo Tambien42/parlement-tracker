@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 from soup import make_request
-import locale
+import locale, time
 
 # Set the locale to French
 locale.setlocale(locale.LC_TIME, "fr_FR.UTF-8")
@@ -231,10 +231,12 @@ def depute_votes(url):
     table = []
     while True:
         soup = make_request(url)
-        list = soup.find_all('section')[-1].find('ul').find_all('li', recursive=False)
+        list = soup.find('div', class_='embed-search-result').find('ul').find_all('li', recursive=False)
         for li in list:
-            numero = li.find("div", class_="flex1").find_all('span')[-1].text.split('-')[0].split('°')[-1].strip()
+            numero = li.find('a')['href'].split('/')[-1]
             position = li.find("span", class_="h6").text.strip()
+            if len(li.find_all("span", class_="h6")) == 3:
+                position = li.find_all("span", class_="h6")[-1].text.strip()
             vote = numero + '-' + position
             table.append(vote)
 
@@ -338,11 +340,13 @@ def deputes():
     table = soup.find('div', id='deputes-list').find_all('li')
     #list = old_deputes()
     #TODO get list from url + get old depute from database
+    #TODO get all ids from database and compare with list merge the two removing doublon
     list = []
-    for li in table:
-        list.append(li.find('a')['href'].split('/')[-1])
+    #for li in table:
+     #   list.append(li.find('a')['href'].split('/')[-1])
     
     #list = ['OMC_PA605036', 'OMC_PA722190']
+    list = ['OMC_PA793780']
     depute = {}
     for fiche in list:
         url = 'https://www2.assemblee-nationale.fr/deputes/fiche/' + fiche
@@ -376,6 +380,7 @@ def deputes():
                         depute['birthdate'] = datetime.strptime(birth, "%d %B %Y")
                     depute['profession'] = i.parent.find('p').text.replace(')', ')$').split('$')[1].strip()
                 
+                #TODO get old commissions and dates
                 if i.text.strip().startswith("Commission"):
                     depute['current_commission'] = i.parent.find('a').text.strip()
                 
