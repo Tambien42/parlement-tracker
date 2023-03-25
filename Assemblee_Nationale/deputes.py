@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 from soup import make_request
-import locale, time
+import locale
 
 # Set the locale to French
 locale.setlocale(locale.LC_TIME, "fr_FR.UTF-8")
@@ -114,7 +114,7 @@ def save_to_database(data: dict, Model):
     # open a new database session
     session = Session()
     # retrieve the row you want to check by its id and sort it by date
-    depute = session.query(Model).filter_by(ids=data["ids"]).first()
+    depute = session.query(Model).filter_by(id_=data["id"]).first()
     if depute:
         return
     # create a new user object
@@ -137,16 +137,13 @@ def next_page_an(page):
         return None
 
 # Extract questions from a depute
-#TODO replace full questions title by id ?
 def depute_questions(url):
     table = []
     while True:
         soup = make_request(url)
         list = soup.find('div', class_='embed-search-result').find('ul').find_all('li', recursive=False)
         for li in list:
-            table.append(li.find("a").text.strip())
-            print(li.find("a").text.strip())
-            print(li.find("a")['href'].split('/')[-1].split('.')[0])
+            table.append(li.find("a")['href'].split('/')[-1].split('.')[0])
 
         # Get next page
         url = next_page_an(soup)
@@ -159,7 +156,7 @@ def depute_rapports(url):
     table = []
     while True:
         soup = make_request(url)
-        list = soup.find_all('section')[-1].find('ul').find_all('li', recursive=False)
+        list = soup.find('div', class_='embed-search-result').find('ul').find_all('li', recursive=False)
         for li in list:
             table.append(li.find("a").text.replace('\n', '').strip())
 
@@ -174,9 +171,10 @@ def depute_author(url):
     table = []
     while True:
         soup = make_request(url)
-        list = soup.find_all('section')[-1].find('ul').find_all('li', recursive=False)
-        for li in list:
-            table.append(li.find("a").text.strip())
+        if soup.find('div', class_='embed-search-result').find('ul') != None:
+            list = soup.find('div', class_='embed-search-result').find('ul').find_all('li', recursive=False)
+            for li in list:
+                table.append(li.find("a").text.strip().split('°')[-1])
 
         # Get next page
         url = next_page_an(soup)
@@ -189,9 +187,11 @@ def depute_cosigner(url):
     table = []
     while True:
         soup = make_request(url)
-        list = soup.find_all('section')[-1].find('ul').find_all('li', recursive=False)
+        list = soup.find('div', class_='embed-search-result').find('ul').find_all('li', recursive=False)
         for li in list:
-            table.append(li.find("a").text.strip())
+            if li.find("a").text.strip().startswith('Avis'):
+                continue
+            table.append(li.find("a").text.strip().split('°')[-1])
 
         # Get next page
         url = next_page_an(soup)
@@ -210,7 +210,6 @@ def depute_commission(url):
             url_cr = 'https://www2.assemblee-nationale.fr' + li.find("a")['href']
             cr = make_request(url_cr)
             iframe = cr.find('iframe')
-            table = []
             if iframe:
                 url_iframe = 'https://www.assemblee-nationale.fr' + iframe['src']
                 page = make_request(url_iframe)
@@ -250,7 +249,6 @@ def depute_votes(url):
             break 
     return ', '.join(table)
 
-#TODO return data
 # Extract all travaux parlementaires
 def travaux(id_):
     url  = 'https://www2.assemblee-nationale.fr/dyn/deputes/' + id_ + '/travaux-parlementaires'
@@ -268,14 +266,14 @@ def travaux(id_):
         if title == 'Questions':
             questions_depute = depute_questions(url)
         
-        # if title == 'Rapports':
-        #     rapports_depute = depute_rapports(url)
+        if title == 'Rapports':
+            rapports_depute = depute_rapports(url)
        
-        # if title == 'Propositions (auteur)':
-        #     author_depute = depute_author(url)
+        if title == 'Propositions (auteur)':
+            author_depute = depute_author(url)
 
-        # if title == 'Propositions (cosignataire)':
-        #     cosigner_depute = depute_cosigner(url)
+        if title == 'Propositions (cosignataire)':
+            cosigner_depute = depute_cosigner(url)
 
     section = soup.find('main').find_all('section')[-1].find('div', class_='ha-grid').find_all('div', class_='ha-grid-item')
     commission_depute = ''
@@ -288,11 +286,11 @@ def travaux(id_):
         # if title == 'Séance Publique':
         #     seance = 'Not Done'
         
-        # if title == 'Commission':
-        #     commission_depute = depute_commission(url)
+        if title == 'Commission':
+            commission_depute = depute_commission(url)
         
-        # if title == 'Positions de vote':
-        #     votes_depute = depute_votes(url)
+        if title == 'Positions de vote':
+            votes_depute = depute_votes(url)
 
     return questions_depute, rapports_depute, author_depute, cosigner_depute, commission_depute, votes_depute
 
@@ -315,7 +313,6 @@ def dmandat(ids):
         date_debut_mandat = datetime.strptime(date_mandat, "%d %B %Y")
     return date_election, date_debut_mandat
 
-#TODO save old deputes in db
 # get info on deputes that have resigned before launching the project
 # find the name https://www.nosdeputes.fr/deputes
 def old_deputes():
@@ -327,9 +324,18 @@ def old_deputes():
         url = 'https://www.nosdeputes.fr' + i.parent['href']
         name = i.parent.find_all("span")[1].text.strip()
         soup = make_request(url)
-        href = soup.find('div', class_='contenu_depute').find('div', id='b1').find('ul').find('ul').find('li').find('a')['href']
+        href = soup.find('div', class_='contenu_depute').find('div', id='b1').find('ul').find('ul').find('li').find('a')['href'].split('/')[-1]
         list.append(href)
     return list
+
+def get_ids():
+        # open a new database session
+    session = Session()
+    # retrieve the row you want to check by its id and sort it by date
+    data = ['OMC_' + str(p.id_) for p in session.query(Deputes).all()]
+    # close the session
+    session.close()
+    return data
 
 #TODO function to check if id in database skip info gathering except travaux parlemantaire
 #TODO and check if depute hasn't resigned or changed commission add db column date_end_mandat
@@ -337,21 +343,24 @@ def old_deputes():
 def deputes():
     # Start with the first page
     url = 'https://www2.assemblee-nationale.fr/deputes/liste/alphabetique'
-
     # Parse the HTML content
     soup = make_request(url)
      # Find the table containing the data
     table = soup.find('div', id='deputes-list').find_all('li')
-    #list = old_deputes()
-    #TODO get list from url + get old depute from database
-    #TODO get all ids from database and compare with list merge the two removing doublon
-    list = []
+
+    # get list of all deputes in database
+    old_list = old_deputes()
+    #in_db = get_ids()
+    # get list of all current deputes from the website 
+    current_list = []
     for li in table:
-       list.append(li.find('a')['href'].split('/')[-1])
+       current_list.append(li.find('a')['href'].split('/')[-1])
     
-    #list = ['OMC_PA605036', 'OMC_PA722190']
+    # Merge lists and remove duplicate
+    depute_list = list(set(current_list + old_list))
+    #data = ['OMC_PA605036', 'OMC_PA722190']
     depute = {}
-    for fiche in list:
+    for fiche in depute_list:
         url = 'https://www2.assemblee-nationale.fr/deputes/fiche/' + fiche
         soup = make_request(url)
 
@@ -364,7 +373,7 @@ def deputes():
         depute['group'] = soup.find("a", class_='h4').text.strip()
         mandat = soup.find('section').find_all('div')[-1].find_all('span')[-1].text.replace('|', '').strip()
         if mandat == 'Mandat en cours':
-            depute['mandat_fin'] = ''
+            depute['mandat_fin'] = None
             depute['raison'] = ''
 
             section2 = soup.find_all('section')[1]
@@ -439,6 +448,7 @@ def deputes():
             if match:
                 str = match.group(1)
                 date = datetime.strptime(str, "%d %B %Y")
+                depute['mandat_fin'] = date
             else:
                 # handle the case where the regex didn't match
                 date = None
@@ -472,11 +482,11 @@ def deputes():
             depute['collaborateurs'] = ''
 
         # Extract Election Date
-        #depute['date_election'], depute['date_debut_mandat'] = dmandat(depute['id'])
+        depute['date_election'], depute['date_debut_mandat'] = dmandat(depute['id'])
 
         # Extract Travaux Parlementaires
         depute['questions_depute'], depute['rapports_depute'], depute['author_depute'], depute['cosigner_depute'], depute['commission_depute'],depute['vote_depute'] = travaux(depute['id'])
-        #save_to_database(depute, Deputes)
+        save_to_database(depute, Deputes)
 
         
 deputes()
