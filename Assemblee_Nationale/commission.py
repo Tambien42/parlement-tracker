@@ -2,7 +2,7 @@ import re
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, Column, Integer, String, DATE, TEXT
 from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime
+from datetime import datetime, timedelta, date
 from soup import make_request
 import locale
 
@@ -120,16 +120,18 @@ def save_crc_to_database(data: dict, Model):
     # close the session
     session.close()
 
-#TODO get old composition with date?
 # def to get composition of commission
-def composition(url):
+def composition(url, date):
     page = make_request(url)
     section = page.find('section', class_='an-section printable')
     div = section.find('div', class_='_gutter-ms _vertical').find_all('div', recursive=False)
     composition = {}
     composition['name'] = page.find('span', class_='h1').text.strip()
     today = datetime.today().strftime('%d/%m/%Y')
-    composition['date'] = datetime.strptime(today, "%d/%m/%Y")
+    if date == None:
+        composition['date'] = datetime.strptime(today, "%d/%m/%Y")
+    else:
+        composition['date'] = date
     composition['president'] = div[0].find('span', class_='h5').text.strip()
     composition['rapporteur'] = ''
     if len(div) == 4:
@@ -222,9 +224,21 @@ def commissions():
         # Extract composition
         url = 'https://www.assemblee-nationale.fr' + link['href']
         page = make_request(url)
-        composition_link = 'https://www.assemblee-nationale.fr' + page.find('a', class_='composition-link')['href']
-        compo = composition(composition_link)
-        save_compo_to_database(compo, Commission)
+        #composition_link = 'https://www.assemblee-nationale.fr' + page.find('a', class_='composition-link')['href']
+        ### TEMP to get composition through time
+
+        start_date = datetime.strptime("2022-06-30", "%Y-%m-%d").date()
+        end_date = date.today()
+
+        delta = timedelta(days=1)
+        while start_date <= end_date:
+            composition_link = 'https://www.assemblee-nationale.fr' + page.find('a', class_='composition-link')['href'] + '?date=' + start_date.strftime('%d/%m/%Y')
+            print(start_date.strftime('%d/%m/%Y'))
+            ########################
+            compo = composition(composition_link, start_date)
+            save_compo_to_database(compo, Commission)
+            start_date += delta
+        
         # Extract Comptes Rendus
         crc_url = 'https://www.assemblee-nationale.fr' + page.find('section', id='comptes_rendus_des_reunions').find('a', class_='link')['href']
         data = crc(crc_url)
