@@ -5,6 +5,17 @@ from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime, timedelta, date
 from soup import make_request
 import locale
+import signal
+import time
+
+class TimeoutError(Exception):
+    pass
+
+def handler(signum, frame):
+    raise TimeoutError()
+
+# Set the signal handler
+signal.signal(signal.SIGALRM, handler)
 
 # Set the locale to French
 # Needed to translate date
@@ -78,7 +89,8 @@ def save_compo_to_database(data: dict, Model):
     """
     # open a new database session
     session = Session()
-    commission = session.query(Model).filter_by(name=data["name"]).order_by(Model.date.desc()).first()
+    commission = session.query(Model).filter(Model.name==data["name"], Model.date <= data["date"]).order_by(Model.date.desc()).first()
+
     if commission != None:
         # compare all columns except for the date column
         if (commission.name == data['name'] and
@@ -127,6 +139,7 @@ def composition(url, date):
     div = section.find('div', class_='_gutter-ms _vertical').find_all('div', recursive=False)
     composition = {}
     composition['name'] = page.find('span', class_='h1').text.strip()
+    print(composition['name'])
     today = datetime.today().strftime('%d/%m/%Y')
     if date == None:
         composition['date'] = datetime.strptime(today, "%d/%m/%Y")
@@ -211,36 +224,58 @@ def crc(url):
             break   
     return crc
 
-def commissions():
-    # Start with the first page
-    url = 'https://www.assemblee-nationale.fr/dyn/commissions-et-autres-organes'
-    # Parse the HTML content
-    soup = make_request(url)
+def commissions(list = [], start_date = None, done = False):
+    # Set the timeout to 5 seconds
+    signal.alarm(30)
+    try:
+        # Start with the first page
+        url = 'https://www.assemblee-nationale.fr/dyn/commissions-et-autres-organes'
+        # Parse the HTML content
+        soup = make_request(url)
 
-    # Get Permanent Commissions
-    permanent = soup.find_all('div', class_='section')[2].find_all('a', class_='inner')
-    permanent.pop(-1)
-    for link in permanent:
-        # Extract composition
-        url = 'https://www.assemblee-nationale.fr' + link['href']
-        page = make_request(url)
-        #composition_link = 'https://www.assemblee-nationale.fr' + page.find('a', class_='composition-link')['href']
-        ### TEMP to get composition through time
+        # Get Permanent Commissions
+        permanent = list
+        if len(list) == 0:
+            permanent = soup.find_all('div', class_='section')[2].find_all('a', class_='inner')
+            permanent.pop(-1)
+        save = permanent.copy()
 
-        start_date = datetime.strptime("2022-06-30", "%Y-%m-%d").date()
+        if start_date == None:
+                start_date = datetime.strptime("2022-06-30", "%Y-%m-%d").date()
         end_date = date.today()
 
-        delta = timedelta(days=1)
-        while start_date <= end_date:
-            composition_link = 'https://www.assemblee-nationale.fr' + page.find('a', class_='composition-link')['href'] + '?date=' + start_date.strftime('%d/%m/%Y')
-            print(start_date.strftime('%d/%m/%Y'))
-            ########################
-            compo = composition(composition_link, start_date)
-            save_compo_to_database(compo, Commission)
-            start_date += delta
-        
-        # Extract Comptes Rendus
-        crc_url = 'https://www.assemblee-nationale.fr' + page.find('section', id='comptes_rendus_des_reunions').find('a', class_='link')['href']
-        data = crc(crc_url)
+        for link in permanent:
+            # Extract composition
+            url = 'https://www.assemblee-nationale.fr' + link['href']
+            page = make_request(url)
+            #composition_link = 'https://www.assemblee-nationale.fr' + page.find('a', class_='composition-link')['href']
+            ### TEMP to get composition through time
+
+            delta = timedelta(days=1)
+            if done == False:
+                while start_date <= end_date:
+                    composition_link = 'https://www.assemblee-nationale.fr' + page.find('a', class_='composition-link')['href'] + '?date=' + start_date.strftime('%d/%m/%Y')
+                    ########################
+                    compo = composition(composition_link, start_date)
+                    save_compo_to_database(compo, Commission)
+                    start_date += delta
+                
+                start_date = datetime.strptime("2022-06-30", "%Y-%m-%d").date()
+                end_date = date.today()
+            done = True
+            
+            # Extract Comptes Rendus
+            crc_url = 'https://www.assemblee-nationale.fr' + page.find('section', id='comptes_rendus_des_reunions').find('a', class_='link')['href']
+            data = crc(crc_url)
+            done = False
+            save.pop(0)
+
+    except Exception as e:
+        print(f'An error occurred, restarting...')
+        commissions(save, start_date, done)
+
+    except TimeoutError:
+        print("Function timed out! Restarting...")
+        commissions(save, start_date, done)
 
 commissions()
