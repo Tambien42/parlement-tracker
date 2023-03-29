@@ -271,11 +271,9 @@ def commissions(list = [], start_date = None, done = False):
             save.pop(0)
 
     except Exception as e:
-        print(f'An error occurred, restarting...')
+        print(f'An error occurred, restarting commissions scraping...')
         commissions(save, start_date, done)
 
     except TimeoutError:
-        print("Function timed out! Restarting...")
+        print("Function timed out! Restarting commissions scraping...")
         commissions(save, start_date, done)
-
-commissions()
