@@ -70,44 +70,48 @@ def save_to_database(data: dict, Model):
     session.close()
 
 def questions():
-    # Parse the HTML content
-    url = 'https://www2.assemblee-nationale.fr/recherche/resultats_questions/'
+    try:
+        # Parse the HTML content
+        url = 'https://www2.assemblee-nationale.fr/recherche/resultats_questions/'
 
-    questions = {}
-    while True:
-        soup = make_request(url)
-        # Find all the rows in the table
-        rows = soup.find('table').find('tbody').find_all('tr')
-        for row in rows:
-            column = row.find_all('td')
-            # ID type of quetion - number of the question - legislature
-            questions["id"] = column[0].find('a')['href'].split('/')[-1].split('.')[0]
-            questions["legislature"]= questions["id"].split('-')[0]
-            # Extract Link
-            questions["link"] = column[0].find('a')['href']
-            # Extract the type of question
-            questions["type"] = column[0].find('strong').text.split('-')[1].split(' ')[1]
-            # Extract the number
-            questions["number"] = column[0].find('strong').text.split('-')[1].split(' ')[2]
-            # Extract name of person who asked the question
-            questions["name"] = column[1].find('strong').text
-            # Extract title
-            questions["title"] = column[1].find('em').text
-            # Extract concerned ministry
-            questions["ministry"] = column[1].find_all('strong')[-1].text
-            asked_date = column[2].find('strong').text
-            questions["asked_date"] = datetime.strptime(asked_date, "%d/%m/%Y")
-            # Extract answered Date
-            if column[2].find('form'):
-                questions["answered_date"] = None
-            else:
-                answered_date = column[2].find_all('strong')[-1].text
-                questions["answered_date"] = datetime.strptime(answered_date, "%d/%m/%Y")
+        questions = {}
+        while True:
+            soup = make_request(url)
+            # Find all the rows in the table
+            rows = soup.find('table').find('tbody').find_all('tr')
+            for row in rows:
+                column = row.find_all('td')
+                # ID type of quetion - number of the question - legislature
+                questions["id"] = column[0].find('a')['href'].split('/')[-1].split('.')[0]
+                questions["legislature"]= questions["id"].split('-')[0]
+                # Extract Link
+                questions["link"] = column[0].find('a')['href']
+                # Extract the type of question
+                questions["type"] = column[0].find('strong').text.split('-')[1].split(' ')[1]
+                # Extract the number
+                questions["number"] = column[0].find('strong').text.split('-')[1].split(' ')[2]
+                # Extract name of person who asked the question
+                questions["name"] = column[1].find('strong').text
+                # Extract title
+                questions["title"] = column[1].find('em').text
+                # Extract concerned ministry
+                questions["ministry"] = column[1].find_all('strong')[-1].text
+                asked_date = column[2].find('strong').text
+                questions["asked_date"] = datetime.strptime(asked_date, "%d/%m/%Y")
+                # Extract answered Date
+                if column[2].find('form'):
+                    questions["answered_date"] = None
+                else:
+                    answered_date = column[2].find_all('strong')[-1].text
+                    questions["answered_date"] = datetime.strptime(answered_date, "%d/%m/%Y")
 
-            save_to_database(questions, Questions)
-        # Get next page
-        url = next_page(soup)
-        # Check if there is a next page
-        if url is None:
-            break
-
+                save_to_database(questions, Questions)
+            # Get next page
+            url = next_page(soup)
+            # Check if there is a next page
+            if url is None:
+                break
+    
+    except Exception as e:
+        print(f'An error occurred, restarting questions scraping...')
+        questions()
