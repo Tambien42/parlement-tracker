@@ -68,64 +68,72 @@ def save_to_database(data: dict, Model):
 
 # Scrape Scrutins Data
 #TODO function do put non votant status in fiche depute
-def scrutins():
-    # Start with the first page
-    url = 'https://www2.assemblee-nationale.fr/scrutins/liste/(legislature)/16'
+def scrutins(url = ''):
+    try:
+        # Start with the first page
+        if url == '':
+            url = 'https://www2.assemblee-nationale.fr/scrutins/liste/(legislature)/16'
+        
+        data = {}
+        while True:
+            # Parse the HTML content
+            soup = make_request(url)
+            # Find the table containing the data
+            table = soup.find('table', class_='scrutins')
+            # Find all the rows in the table
+            rows = table.find('tbody').find_all('tr')
+
+            for row in rows:
+                # Find all cells in a row
+                cells = row.find_all('td')
+                # Extract the votes data from the cells
+                data['number'] = re.sub("[^0-9]", "", cells[0].text)
+                data['date'] = datetime.strptime(cells[1].text, "%d/%m/%Y")
+                data['object'] = re.sub(r'\[.*?\]', '', cells[2].text).strip()
+                data['votes_for'] = cells[3].text
+                data['votes_against'] = cells[4].text
+                data['votes_abstention'] = cells[5].text
+
+                # Extract scrutin data from analysis url
+                analyse_url = 'https://www2.assemblee-nationale.fr' + cells[2].find_all('a')[-1]['href']
+                analyse = make_request(analyse_url)
+                # Extract Number and name of present deputes but Non Votant
+                nv = analyse.find_all('div', class_='Non-votant')
+                list_non_votant = ""
+                data['non_votants'] = 0
+                for i in nv:
+                    data['non_votants'] = data['non_votants'] + int(i.find('p').find('b').text)
+                    list_non_votant = list_non_votant + ', ' + i.find('ul').text.strip().split('(')[0].replace('\xa0', ' ').strip()
+                
+                # Extract votes by group
+                data['group_vote'] = ""
+                groups = analyse.find('ul', {"id": "index-groupe"}).find_all('li')
+                for g in groups:
+                    gr = g.find_all('span')
+                    group = gr[0].text
+                    nb_votes = 0
+                    if len(gr) != 1:
+                        for n in gr[1:]:
+                            nb_votes = nb_votes + int(n.find('b').text)
+                    data['group_vote'] = data['group_vote'] + ' ,' + group + ':' + str(nb_votes)
+                tmp = data['group_vote'].split(';')
+                tmp.pop(0)
+                data['group_vote'] = ';'.join(tmp)
+
+                # Calculations
+                data['total_votes'] = int(data['votes_for']) + int(data['votes_against']) + int(data['votes_abstention']) + int(data['non_votants'])
+                pourcentage_participation = float((data['total_votes'] / 577) * 100)
+                data['pourcentage_abstention'] = round(100 - pourcentage_participation, 2)
+                save_to_database(data, Scrutins)
+
+            # Get next page
+            url = next_page(soup)
+            # Check if there is a next page
+            if url is None:
+                break
     
-    scrutins = {}
-    while True:
-        # Parse the HTML content
-        soup = make_request(url)
-        # Find the table containing the data
-        table = soup.find('table', class_='scrutins')
-        # Find all the rows in the table
-        rows = table.find('tbody').find_all('tr')
+    except Exception as e:
+        print(f'An error occurred, restarting scrutins scraping...')
+        scrutins(url)
 
-        for row in rows:
-            # Find all cells in a row
-            cells = row.find_all('td')
-            # Extract the votes data from the cells
-            scrutins['number'] = re.sub("[^0-9]", "", cells[0].text)
-            scrutins['date'] = datetime.strptime(cells[1].text, "%d/%m/%Y")
-            scrutins['object'] = re.sub(r'\[.*?\]', '', cells[2].text).strip()
-            scrutins['votes_for'] = cells[3].text
-            scrutins['votes_against'] = cells[4].text
-            scrutins['votes_abstention'] = cells[5].text
-
-            # Extract scrutin data from analysis url
-            analyse_url = 'https://www2.assemblee-nationale.fr' + cells[2].find_all('a')[-1]['href']
-            analyse = make_request(analyse_url)
-            # Extract Number and name of present deputes but Non Votant
-            nv = analyse.find_all('div', class_='Non-votant')
-            list_non_votant = ""
-            scrutins['non_votants'] = 0
-            for i in nv:
-                scrutins['non_votants'] = scrutins['non_votants'] + int(i.find('p').find('b').text)
-                list_non_votant = list_non_votant + ', ' + i.find('ul').text.strip().split('(')[0].replace('\xa0', ' ').strip()
-            
-            # Extract votes by group
-            scrutins['group_vote'] = ""
-            groups = analyse.find('ul', {"id": "index-groupe"}).find_all('li')
-            for g in groups:
-                gr = g.find_all('span')
-                group = gr[0].text
-                nb_votes = 0
-                if len(gr) != 1:
-                    for n in gr[1:]:
-                        nb_votes = nb_votes + int(n.find('b').text)
-                scrutins['group_vote'] = scrutins['group_vote'] + ' ;' + group + ',' + str(nb_votes)
-            tmp = scrutins['group_vote'].split(';')
-            tmp.pop(0)
-            scrutins['group_vote'] = ';'.join(tmp)
-
-            # Calculations
-            scrutins['total_votes'] = int(scrutins['votes_for']) + int(scrutins['votes_against']) + int(scrutins['votes_abstention']) + int(scrutins['non_votants'])
-            pourcentage_participation = float((scrutins['total_votes'] / 577) * 100)
-            scrutins['pourcentage_abstention'] = round(100 - pourcentage_participation, 2)
-            save_to_database(scrutins, Scrutins)
-
-        # Get next page
-        url = next_page(soup)
-        # Check if there is a next page
-        if url is None:
-            break
+scrutins()
