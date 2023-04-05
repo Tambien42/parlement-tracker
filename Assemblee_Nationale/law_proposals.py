@@ -62,9 +62,10 @@ def save_to_database(data: dict, Model):
     # close the session
     session.close()
 
-def law_proposals():
+def law_proposals(url = ''):
     try:
-        url = 'https://www2.assemblee-nationale.fr/documents/liste/(type)/propositions-loi'
+        if url == '':
+            url = 'https://www2.assemblee-nationale.fr/documents/liste/(type)/propositions-loi'
 
         data = {}
         while True:
@@ -120,4 +121,4 @@ def law_proposals():
 
     except Exception as e:
         print(f'An error occurred, restarting law proposals scraping...')
-        law_proposals()
+        law_proposals(url)

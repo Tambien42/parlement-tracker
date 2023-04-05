@@ -37,7 +37,7 @@ class Deputes(Base):
     facebook = Column("facebook", String)
     instagram = Column("instagram", String)
     linkedin = Column("linkedin", String)
-    lien_interet = Column("line_interet", String)
+    lien_interet = Column("lien_interet", String)
     collaborateurs = Column("collaborateurs", String)
     date_election = Column("date_election", DATE)
     date_debut_mandat = Column("date_debut_mandat", DATE)
@@ -84,25 +84,6 @@ class Deputes(Base):
 
 #Create the table in the database
 Base.metadata.create_all(engine)
-def update_example(name, value):
-    session = Session()
-
-    # Check if the data is in the database
-    data = session.query(Example).filter(Example.name == name).first()
-    if data:
-        # If the data is in the database and the value has changed, modify it
-        if data.value != value:
-            data.value = value
-            session.commit()
-            print("Data modified successfully")
-        else:
-            print("Data already exists and has not changed")
-    else:
-        # If the data is not in the database, add it
-        data = Example(name=name, value=value)
-        session.add(data)
-        session.commit()
-        print("Data added successfully")
         
 def save_to_database(data: dict, Model):
     """
@@ -116,6 +97,78 @@ def save_to_database(data: dict, Model):
     # retrieve the row you want to check by its id and sort it by date
     depute = session.query(Model).filter_by(id_=data["id"]).first()
     if depute:
+        if depute.group != data["group"]:
+            depute.group = data["group"]
+            session.commit()
+        
+        if depute.mandat_fin != data["mandat_fin"]:
+            depute.mandat_fin = data["mandat_fin"]
+            session.commit()
+
+        if depute.raison != data["raison"]:
+            depute.raison = data["raison"]
+            session.commit()
+        
+        if depute.commission != data["current_commission"]:
+            depute.commission = data["current_commission"]
+            session.commit()
+        
+        if depute.suppleant != data["suppleant"]:
+            depute.suppleant = data["suppleant"]
+            session.commit()
+        
+        if depute.rattachement_finance != data["rattachement_finance"]:
+            depute.rattachement_finance = data["rattachement_finance"]
+            session.commit()
+        
+        if depute.circonscription_adress != data["circonscription_adress"]:
+            depute.circonscription_adress = data["circonscription_adress"]
+            session.commit()
+        
+        if depute.twitter != data["twitter"]:
+            depute.twitter = data["twitter"]
+            session.commit()
+        
+        if depute.facebook != data["facebook"]:
+            depute.facebook = data["facebook"]
+            session.commit()
+        
+        if depute.instagram != data["instagram"]:
+            depute.instagram = data["instagram"]
+            session.commit()
+        
+        if depute.linkedin != data["linkedin"]:
+            depute.linkedin = data["linkedin"]
+            session.commit()
+        
+        if depute.collaborateurs != data["collaborateurs"]:
+            depute.collaborateurs = data["collaborateurs"]
+            session.commit()
+        
+        if depute.position_vote != data["vote_depute"]:
+            depute.position_vote = data["vote_depute"]
+            session.commit()
+        
+        if depute.questions != data["questions_depute"]:
+            depute.questions = data["questions_depute"]
+            session.commit()
+        
+        if depute.rapports != data["rapports_depute"]:
+            depute.rapports = data["rapports_depute"]
+            session.commit()
+        
+        if depute.law_author != data["author_depute"]:
+            depute.law_author = data["author_depute"]
+            session.commit()
+        
+        if depute.law_cosigner != data["cosigner_depute"]:
+            depute.law_cosigner = data["cosigner_depute"]
+            session.commit()
+        
+        if depute.commission_presence != data["commission_depute"]:
+            depute.commission_presence = data["commission_depute"]
+            session.commit()
+
         return
     # create a new user object
     new_data = Model(data)
@@ -337,156 +390,178 @@ def get_ids():
     session.close()
     return data
 
+def merge_lists(list1, list2):
+    merged_list = []
+
+    for item in list1:
+        if item not in merged_list:
+            merged_list.append(item)
+
+    for item in list2:
+        if item not in merged_list:
+            merged_list.append(item)
+
+    return merged_list
+
 #TODO function to check if id in database skip info gathering except travaux parlemantaire
 #TODO and check if depute hasn't resigned or changed commission add db column date_end_mandat
 # Extract all deputes informations
-def deputes():
-    # Start with the first page
-    url = 'https://www2.assemblee-nationale.fr/deputes/liste/alphabetique'
-    # Parse the HTML content
-    soup = make_request(url)
-     # Find the table containing the data
-    table = soup.find('div', id='deputes-list').find_all('li')
+def deputes(depute_list = []):
+    try:
+        save_list = []
+        if len(depute_list) == 0:
+            # Start with the first page
+            url = 'https://www2.assemblee-nationale.fr/deputes/liste/alphabetique'
+            # Parse the HTML content
+            soup = make_request(url)
+            # Find the table containing the data
+            table = soup.find('div', id='deputes-list').find_all('li')
 
-    # get list of all deputes in database
-    old_list = old_deputes()
-    #in_db = get_ids()
-    # get list of all current deputes from the website 
-    current_list = []
-    for li in table:
-       current_list.append(li.find('a')['href'].split('/')[-1])
-    
-    # Merge lists and remove duplicate
-    depute_list = list(set(current_list + old_list))
-    #data = ['OMC_PA605036', 'OMC_PA722190']
-    depute = {}
-    for fiche in depute_list:
-        url = 'https://www2.assemblee-nationale.fr/deputes/fiche/' + fiche
-        soup = make_request(url)
+            # get list of all deputes in database
+            old_list = old_deputes()
+            #in_db = get_ids()
+            # get list of all current deputes from the website 
+            current_list = []
+            for li in table:
+                current_list.append(li.find('a')['href'].split('/')[-1])
+            
+            # Merge lists and remove duplicate
+            depute_list = merge_lists(current_list, old_list)
+            save_list = depute_list.copy()
+            #data = ['OMC_PA605036', 'OMC_PA722190']
+            
+        depute = {}
+        for fiche in depute_list:
+            url = 'https://www2.assemblee-nationale.fr/deputes/fiche/' + fiche
+            soup = make_request(url)
 
-        # Extract depute info
-        depute['name'] = soup.find("h1").text.strip()
-        print(f'{depute["name"]}')
-        depute['id'] = soup.find("h1").parent['href'].split('/')[-1]
-        #TODO download photo and store path
-        depute['photo'] = soup.find('div', class_='acteur-photo-image').find('img')['src']
-        depute['group'] = soup.find("a", class_='h4').text.strip()
-        mandat = soup.find('section').find_all('div')[-1].find_all('span')[-1].text.replace('|', '').strip()
-        if mandat == 'Mandat en cours':
-            depute['mandat_fin'] = None
-            depute['raison'] = ''
+            # Extract depute info
+            depute['name'] = soup.find("h1").text.strip()
+            print(f'{depute["name"]}')
+            depute['id'] = soup.find("h1").parent['href'].split('/')[-1]
+            #TODO download photo and store path
+            depute['photo'] = soup.find('div', class_='acteur-photo-image').find('img')['src']
+            depute['group'] = soup.find("a", class_='h4').text.strip()
+            mandat = soup.find('section').find_all('div')[-1].find_all('span')[-1].text.replace('|', '').strip()
+            if mandat == 'Mandat en cours':
+                depute['mandat_fin'] = None
+                depute['raison'] = ''
 
-            section2 = soup.find_all('section')[1]
-            info = section2.find('div', class_='ha-grid-item').find('div', class_='bloc-content').find_all('span', class_='h5')
-            depute['birthdate'] = ''
-            depute['current_commission'] = ''
-            depute['suppleant'] = ''
-            depute['rattachement_finance'] = ''
-            depute['circonscription_adress'] = ''
-            for i in info:
-                if i.text.strip().startswith("Biographie"):
-                    date = i.parent.find('p').text.replace(')', ')$').split('$')[0].strip()
-                    match = re.search(r'\d{1,2}\s+\w+\s+\d{4}', date)
-                    if match:
-                        birth = match.group()
-                        depute['birthdate'] = datetime.strptime(birth, "%d %B %Y")
-                    depute['profession'] = i.parent.find('p').text.replace(')', ')$').split('$')[1].strip()
+                section2 = soup.find_all('section')[1]
+                info = section2.find('div', class_='ha-grid-item').find('div', class_='bloc-content').find_all('span', class_='h5')
+                depute['birthdate'] = ''
+                depute['current_commission'] = ''
+                depute['suppleant'] = ''
+                depute['rattachement_finance'] = ''
+                depute['circonscription_adress'] = ''
+                for i in info:
+                    if i.text.strip().startswith("Biographie"):
+                        date = i.parent.find('p').text.replace(')', ')$').split('$')[0].strip()
+                        match = re.search(r'\d{1,2}\s+\w+\s+\d{4}', date)
+                        if match:
+                            birth = match.group()
+                            depute['birthdate'] = datetime.strptime(birth, "%d %B %Y")
+                        depute['profession'] = i.parent.find('p').text.replace(')', ')$').split('$')[1].strip()
+                    
+                    #TODO get old commissions and dates
+                    if i.text.strip().startswith("Commission"):
+                        depute['current_commission'] = i.parent.find('a').text.strip()
+                    
+                    if i.text.strip().startswith("Suppléant"):
+                        depute['suppleant'] = i.parent.find_all('span')[-1].text.strip()
+                    
+                    if i.text.strip().startswith("Rattachement"):
+                        depute['rattachement_finance'] = i.parent.find_all('span')[-1].text.strip()
+                    
+                    if i.text.strip().startswith("Adresse"):
+                        adresses = i.parent.find('ul').find_all('li')
+                        for a in adresses:
+                            if a.find('span') and a.find('span').text.strip().startswith("En circonscription"):
+                                depute["circonscription_adress"] = a.find_all('span')[-1].text.strip()
+                    
+                    departement = section2.find_all('div', class_='ha-grid-item')[1].find_all('a')[-1]['href'].split('/')[-1].split('?')[0].strip()
+                    circonscription_number = section2.find_all('div', class_='ha-grid-item')[1].find_all('a')[-1]['href'].split('/')[-1].split('=')[-1].strip()
+                    depute['circonscription'] = departement + '-' + circonscription_number
+                    depute['siege_number'] = ''
+                    if soup.find('a', href=re.compile("/dyn/hemicycle")):
+                        depute['siege_number'] = soup.find('a', href=re.compile("/dyn/hemicycle"))['href'].split('=')[-1].strip()
+                    depute['mail'] = ''
+                    if soup.find('a', href=re.compile("mailto")):
+                        depute['mail'] = soup.find('a', href=re.compile("mailto"))['href'].split(':')[-1]
+
+                    depute['twitter'] = ''
+                    depute['facebook'] = ''
+                    depute['instagram'] = ''
+                    depute['linkedin'] = ''
+                    if soup.find('div', class_='right-menu'):
+                        for i in soup.find("div", class_="right-menu").find_all("li"):
+                            if i.find("i")["class"][-1].split("-")[-1] == 'twitter':
+                                depute['twitter'] = i.find('a')['href'].strip() 
+                            if i.find("i")["class"][-1].split("-")[-1] == 'facebook':
+                                depute['facebook'] = i.find('a')['href'].strip()
+                            if i.find("i")["class"][-1].split("-")[-1] == 'instagram':
+                                depute['instagram'] = i.find('a')['href'].strip() 
+                            if i.find("i")["class"][-1].split("-")[-1] == 'linkedin':
+                                depute['linkedin'] = i.find('a')['href'].strip()
+                    
+                    depute['lien_interet'] = soup.find('div', text=re.compile("Consulter la déclaration")).parent.parent.find('a')['href'].strip()
+                    collabo = soup.find('span', text=re.compile("Collaborateurs")).parent.find_all('li')
+                    depute['collaborateurs'] = collabo[0].text.strip()
+                    for c in collabo[1:]:
+                        depute['collaborateurs'] = depute['collaborateurs'] + ', ' + c.text.strip()
+            else:
+                item = soup.find('span', text=re.compile("Date de fin de mandat"))
+                date = item.parent.find_all('span')[-1].text.replace('(', '|').replace(')', '').strip().split('|')[0]
+                # Define regular expression pattern to match the date
+                pattern = r"(\d{1,2}\s\w+\s\d{4})"
+                # Find the date in the string
+                match = re.search(pattern, date)
+                if match:
+                    str = match.group(1)
+                    date = datetime.strptime(str, "%d %B %Y")
+                    depute['mandat_fin'] = date
+                else:
+                    # handle the case where the regex didn't match
+                    date = None
+                    depute['mandat_fin'] = date
+                    depute['raison'] = item.parent.find_all('span')[-1].text.replace('(', '|').replace(')', '').strip().split('|')[1]
                 
-                #TODO get old commissions and dates
-                if i.text.strip().startswith("Commission"):
-                    depute['current_commission'] = i.parent.find('a').text.strip()
+                section2 = soup.find_all('section')[1]
+                info = section2.find('div', class_='ha-grid-item').find('div', class_='bloc-content').find_all('span', class_='h5')
+                depute['birthdate'] = ''
+                depute['current_commission'] = ''
+                depute['suppleant'] = ''
+                depute['rattachement_finance'] = ''
+                depute['circonscription_adress'] = ''
+                for i in info:
+                    if i.text.strip().startswith("Biographie"):
+                        date = i.parent.find('p').text.replace(')', ')$').split('$')[0].strip()
+                        match = re.search(r'\d{1,2}\s+\w+\s+\d{4}', date)
+                        if match:
+                            birth = match.group()
+                            depute['birthdate'] = datetime.strptime(birth, "%d %B %Y")
+                        depute['profession'] = i.parent.find('p').text.replace(')', ')$').split('$')[1].strip()
                 
-                if i.text.strip().startswith("Suppléant"):
-                    depute['suppleant'] = i.parent.find_all('span')[-1].text.strip()
-                
-                if i.text.strip().startswith("Rattachement"):
-                    depute['rattachement_finance'] = i.parent.find_all('span')[-1].text.strip()
-                
-                if i.text.strip().startswith("Adresse"):
-                    adresses = i.parent.find('ul').find_all('li')
-                    for a in adresses:
-                        if a.find('span') and a.find('span').text.strip().startswith("En circonscription"):
-                            depute["circonscription_adress"] = a.find_all('span')[-1].text.strip()
-                
-                departement = section2.find_all('div', class_='ha-grid-item')[1].find_all('a')[-1]['href'].split('/')[-1].split('?')[0].strip()
-                circonscription_number = section2.find_all('div', class_='ha-grid-item')[1].find_all('a')[-1]['href'].split('/')[-1].split('=')[-1].strip()
-                depute['circonscription'] = departement + '-' + circonscription_number
+                depute['circonscription'] = ''
                 depute['siege_number'] = ''
-                if soup.find('a', href=re.compile("/dyn/hemicycle")):
-                    depute['siege_number'] = soup.find('a', href=re.compile("/dyn/hemicycle"))['href'].split('=')[-1].strip()
                 depute['mail'] = ''
-                if soup.find('a', href=re.compile("mailto")):
-                    depute['mail'] = soup.find('a', href=re.compile("mailto"))['href'].split(':')[-1]
-
                 depute['twitter'] = ''
                 depute['facebook'] = ''
                 depute['instagram'] = ''
                 depute['linkedin'] = ''
-                if soup.find('div', class_='right-menu'):
-                    for i in soup.find("div", class_="right-menu").find_all("li"):
-                        if i.find("i")["class"][-1].split("-")[-1] == 'twitter':
-                            depute['twitter'] = i.find('a')['href'].strip() 
-                        if i.find("i")["class"][-1].split("-")[-1] == 'facebook':
-                            depute['facebook'] = i.find('a')['href'].strip()
-                        if i.find("i")["class"][-1].split("-")[-1] == 'instagram':
-                            depute['instagram'] = i.find('a')['href'].strip() 
-                        if i.find("i")["class"][-1].split("-")[-1] == 'linkedin':
-                            depute['linkedin'] = i.find('a')['href'].strip()
-                
-                depute['lien_interet'] = soup.find('div', text=re.compile("Consulter la déclaration")).parent.parent.find('a')['href'].strip()
-                collabo = soup.find('span', text=re.compile("Collaborateurs")).parent.find_all('li')
-                depute['collaborateurs'] = collabo[0].text.strip()
-                for c in collabo[1:]:
-                    depute['collaborateurs'] = depute['collaborateurs'] + ', ' + c.text.strip()
-        else:
-            item = soup.find('span', text=re.compile("Date de fin de mandat"))
-            date = item.parent.find_all('span')[-1].text.replace('(', '|').replace(')', '').strip().split('|')[0]
-            # Define regular expression pattern to match the date
-            pattern = r"(\d{1,2}\s\w+\s\d{4})"
-            # Find the date in the string
-            match = re.search(pattern, date)
-            if match:
-                str = match.group(1)
-                date = datetime.strptime(str, "%d %B %Y")
-                depute['mandat_fin'] = date
-            else:
-                # handle the case where the regex didn't match
-                date = None
-                depute['mandat_fin'] = date
-                depute['raison'] = item.parent.find_all('span')[-1].text.replace('(', '|').replace(')', '').strip().split('|')[1]
-            
-            section2 = soup.find_all('section')[1]
-            info = section2.find('div', class_='ha-grid-item').find('div', class_='bloc-content').find_all('span', class_='h5')
-            depute['birthdate'] = ''
-            depute['current_commission'] = ''
-            depute['suppleant'] = ''
-            depute['rattachement_finance'] = ''
-            depute['circonscription_adress'] = ''
-            for i in info:
-                if i.text.strip().startswith("Biographie"):
-                    date = i.parent.find('p').text.replace(')', ')$').split('$')[0].strip()
-                    match = re.search(r'\d{1,2}\s+\w+\s+\d{4}', date)
-                    if match:
-                        birth = match.group()
-                        depute['birthdate'] = datetime.strptime(birth, "%d %B %Y")
-                    depute['profession'] = i.parent.find('p').text.replace(')', ')$').split('$')[1].strip()
-            
-            depute['circonscription'] = ''
-            depute['siege_number'] = ''
-            depute['mail'] = ''
-            depute['twitter'] = ''
-            depute['facebook'] = ''
-            depute['instagram'] = ''
-            depute['linkedin'] = ''
-            depute['lien_interet'] = ''
-            depute['collaborateurs'] = ''
+                depute['lien_interet'] = ''
+                depute['collaborateurs'] = ''
 
-        # Extract Election Date
-        depute['date_election'], depute['date_debut_mandat'] = dmandat(depute['id'])
+            # Extract Election Date
+            depute['date_election'], depute['date_debut_mandat'] = dmandat(depute['id'])
 
-        # Extract Travaux Parlementaires
-        depute['questions_depute'], depute['rapports_depute'], depute['author_depute'], depute['cosigner_depute'], depute['commission_depute'],depute['vote_depute'] = travaux(depute['id'])
-        save_to_database(depute, Deputes)
-
-        
-deputes()
+            # Extract Travaux Parlementaires
+            depute['questions_depute'], depute['rapports_depute'], depute['author_depute'], depute['cosigner_depute'], depute['commission_depute'],depute['vote_depute'] = travaux(depute['id'])
+            save_to_database(depute, Deputes)
+            save_list.pop(0)
+    except Exception as e:
+        if depute['name']:
+            print(f'error at {depute["name"]}')
+            deputes(save_list)
+        print(f'An error occurred, restarting deputes scraping...')
+        return

@@ -7,12 +7,12 @@ from commission import commissions
 from deputes import deputes
 
 def main():
-    deputes()
-    scrutins()
     groups()
-    questions()
-    law_proposals()
-    commissions()
+    commissions([], None, False)
+    scrutins('')
+    questions('')
+    law_proposals('')
+    deputes([])
     print("done")
 
 if __name__ == '__main__':
