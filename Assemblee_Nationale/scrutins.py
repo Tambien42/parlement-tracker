@@ -136,4 +136,3 @@ def scrutins(url = ''):
         print(f'An error occurred, restarting scrutins scraping...')
         scrutins(url)
 
-scrutins()
