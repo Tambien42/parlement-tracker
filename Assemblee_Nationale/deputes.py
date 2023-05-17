@@ -349,7 +349,10 @@ def travaux(id_):
 
 # Extract date of election and date of debut
 def dmandat(ids):
-    url = 'https://www2.assemblee-nationale.fr/dyn/deputes/' + ids + '/fonctions'
+    # use for old deputes
+    url = 'https://www2.assemblee-nationale.fr/dyn/deputes/' + ids + '/fonctions?archive=oui'
+    #use for current deputes
+    #url = 'https://www2.assemblee-nationale.fr/dyn/deputes/' + ids + '/fonctions'
     soup = make_request(url)
     dates = soup.find('div', class_='page-content').find_all('ul')[1].find_all('li')[0].find_all('span')[-1].text.strip().split('-')
     election = dates[0].strip()
@@ -381,8 +384,20 @@ def old_deputes():
         list.append(href)
     return list
 
+def get_deputes():
+    # Start with the first page
+    url = 'https://www2.assemblee-nationale.fr/deputes/liste/alphabetique'
+    # Parse the HTML content
+    soup = make_request(url)
+    # Find the table containing the data
+    table = soup.find('div', id='deputes-list').find_all('li')
+    list = []
+    for li in table:
+        list.append(li.find('a')['href'].split('/')[-1])
+    return list
+
 def get_ids():
-        # open a new database session
+    # open a new database session
     session = Session()
     # retrieve the row you want to check by its id and sort it by date
     data = ['OMC_' + str(p.id_) for p in session.query(Deputes).all()]
@@ -390,45 +405,15 @@ def get_ids():
     session.close()
     return data
 
-def merge_lists(list1, list2):
-    merged_list = []
-
-    for item in list1:
-        if item not in merged_list:
-            merged_list.append(item)
-
-    for item in list2:
-        if item not in merged_list:
-            merged_list.append(item)
-
-    return merged_list
-
-#TODO function to check if id in database skip info gathering except travaux parlemantaire
 #TODO and check if depute hasn't resigned or changed commission add db column date_end_mandat
 # Extract all deputes informations
 def deputes(depute_list = []):
     try:
-        save_list = []
         if len(depute_list) == 0:
-            # Start with the first page
-            url = 'https://www2.assemblee-nationale.fr/deputes/liste/alphabetique'
-            # Parse the HTML content
-            soup = make_request(url)
-            # Find the table containing the data
-            table = soup.find('div', id='deputes-list').find_all('li')
-
-            # get list of all deputes in database
-            old_list = old_deputes()
-            #in_db = get_ids()
-            # get list of all current deputes from the website 
-            current_list = []
-            for li in table:
-                current_list.append(li.find('a')['href'].split('/')[-1])
-            
-            # Merge lists and remove duplicate
-            depute_list = merge_lists(current_list, old_list)
-            save_list = depute_list.copy()
-            #data = ['OMC_PA605036', 'OMC_PA722190']
+            # get old deputes
+            depute_list = old_deputes()
+            # get current deputes
+            #depute_list = get_deputes()
             
         depute = {}
         for fiche in depute_list:
@@ -520,12 +505,12 @@ def deputes(depute_list = []):
                     str = match.group(1)
                     date = datetime.strptime(str, "%d %B %Y")
                     depute['mandat_fin'] = date
+                    depute['raison'] = item.parent.find_all('span')[-1].text.replace('(', '|').replace(')', '').strip().split('|')[1]
                 else:
                     # handle the case where the regex didn't match
                     date = None
                     depute['mandat_fin'] = date
                     depute['raison'] = item.parent.find_all('span')[-1].text.replace('(', '|').replace(')', '').strip().split('|')[1]
-                
                 section2 = soup.find_all('section')[1]
                 info = section2.find('div', class_='ha-grid-item').find('div', class_='bloc-content').find_all('span', class_='h5')
                 depute['birthdate'] = ''
@@ -558,10 +543,15 @@ def deputes(depute_list = []):
             # Extract Travaux Parlementaires
             depute['questions_depute'], depute['rapports_depute'], depute['author_depute'], depute['cosigner_depute'], depute['commission_depute'],depute['vote_depute'] = travaux(depute['id'])
             save_to_database(depute, Deputes)
-            save_list.pop(0)
+            depute_list.pop(0)
+
     except Exception as e:
         if depute['name']:
             print(f'error at {depute["name"]}')
-            deputes(save_list)
-        print(f'An error occurred, restarting deputes scraping...')
+            print(f'restarting deputes scraping...')
+            deputes(depute_list)
+        else:
+            print(f'An error occurred')
         return
+
+deputes()
