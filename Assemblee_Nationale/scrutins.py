@@ -1,138 +1,180 @@
-import re
-from sqlalchemy import create_engine, Column, Integer, DATE, TEXT, Float
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
+import httpx
+from bs4 import BeautifulSoup
+import sqlalchemy
+from sqlalchemy.orm import Mapped, mapped_column, sessionmaker, declarative_base
 from datetime import datetime
-from soup import make_request, next_page
+import re
+import time
+from urllib.parse import unquote
+from pprint import pprint
+
+# Mapping French day and month names to English
+french_to_english = {
+    # Days of the week
+    "lundi": "Monday",
+    "mardi": "Tuesday",
+    "mercredi": "Wednesday",
+    "jeudi": "Thursday",
+    "vendredi": "Friday",
+    "samedi": "Saturday",
+    "dimanche": "Sunday",
+    
+    # Months of the year
+    "janvier": "January",
+    "février": "February",
+    "mars": "March",
+    "avril": "April",
+    "mai": "May",
+    "juin": "June",
+    "juillet": "July",
+    "août": "August",
+    "septembre": "September",
+    "octobre": "October",
+    "novembre": "November",
+    "décembre": "December",
+
+    # Day
+    "1er": "1"
+}
 
 # create a database connection
-engine = create_engine('sqlite:///votes.db')
+engine = sqlalchemy.create_engine('sqlite:///parlements.db')
 Session = sessionmaker(bind=engine)
-
 Base = declarative_base()
 
 class Scrutins(Base):
     __tablename__ = 'scrutins'
 
-    #ids = Column("id", Integer, primary_key=True)
-    number = Column("number", Integer, primary_key=True, autoincrement=False)
-    date = Column("date", DATE)
-    object = Column("object", TEXT)
-    votes_for = Column("votes_for", Integer)
-    votes_against = Column("votes_against", Integer)
-    votes_abstention = Column("votes_abstention", Integer)
-    non_votants = Column("non_votants", Integer)
-    total_votes = Column("total_votes", Integer)
-    pourcentage_abstention = Column("pourcentage_abstention", Float)
-    group_vote = Column("group_vote", TEXT)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    legislature: Mapped[int]
+    numero: Mapped[int]
+    titre: Mapped[str]
+    date_seance: Mapped[datetime]
+    lien: Mapped[str]
+    votes_pour: Mapped[int]
+    votes_contre: Mapped[int]
+    votes_abstention: Mapped[int]
+    non_votants: Mapped[int]
 
-    def __init__(self, data):
-        self.number = data['number']
-        self.date = data['date']
-        self.object = data['object']
-        self.votes_for = data['votes_for']
-        self.votes_against = data['votes_against']
-        self.votes_abstention = data['votes_abstention']
-        self.non_votants = data['non_votants']
-        self.total_votes = data['total_votes']
-        self.pourcentage_abstention = data['pourcentage_abstention']
-        self.group_vote = data['group_vote']
-    
     def __repr__(self):
-        return f'(Scrutins n {self.number} {self.object})'
+        return f"<Scrutins(id={self.id}, legislature={self.legislature}, numero={self.numero})>"
 
-#Create the table in the database
-Base.metadata.create_all(engine)
+def parse(url):
+    while True:
+        client = httpx.Client()
+        response = httpx.get(url)
+        soup = BeautifulSoup(response, 'html.parser')
+        list = soup.find("section", {"class": "an-section"}).find("ul", {"class": "_centered"}).find_all("a", {"class": "h6"})
+        
+        for item in list:
+            # if get_last_scrutin(item['href'].split("/")[-3]) >= int(item['href'].split("/")[-1]):
+            #     print("already in db")
+            #     return 
+            if check_db(item['href'].split("/")[-3], item['href'].split("/")[-1]) == True:
+                print("already in db")
+                return
+        
+            url_scrutin = "https://www.assemblee-nationale.fr" + item["href"]
+            parse_scrutins(unquote(url_scrutin))
 
-def save_to_database(data: dict, Model):
-    """
-    Save data to a database using the provided session and model.
-    :param data: dictionary containing data to be saved
-    :param model: SQLAlchemy model class
-    :return: None
-    """
+        # Loop through all pages
+        pagination = soup.find('div', class_='an-pagination')
+        next_page_link = pagination.find_all('div')[-1].find('a')
+
+        if next_page_link:
+            url = 'https://www2.assemblee-nationale.fr' + next_page_link['href']
+        else:
+            break
+
+def parse_scrutins(url):
+    response = httpx.get(url)
+    s = BeautifulSoup(response, 'html.parser')
+
+    numero = url.split("/")[-1]
+    legislature = url.split("/")[-3]
+    titre = s.find("p", {"class": "h6"}).text
+    pprint(numero)
+    date = s.find("h2", {"class": "h4"}).text.split("du")[-1].strip()
+    # Replace French names with English names
+    for french, english in french_to_english.items():
+        date = date.replace(french, english)
+    # Define the date format with English names
+    date_format = "%A %d %B %Y"
+    # Convert the date string to a datetime object
+    date_object = datetime.strptime(date, date_format)
+    vote_pour = 0
+    vote_contre = 0
+    abstention = 0
+    if s.find("ul", {"class": "votes-list"}):
+        vote_pour = int(s.find("ul", {"class": "votes-list"}).find("li").find('b').text)
+        vote_contre = int(s.find("ul", {"class": "votes-list"}).find_all("li")[1].find('b').text)
+        abstention = int(s.find("ul", {"class": "votes-list"}).find_all("li")[-1].find('b').text)
+    elif s.find("span", text=lambda x: x and "Pour l’adoption :" in x):
+        vote_pour = int(s.find("span", text=lambda x: x and "Pour l’adoption :" in x).find("b").text)
+    nvs = s.find("section", {"class": "an-section"}).find("div", {"class": "_size-1"}).find_all("span", text=re.compile('Non votant')) 
+    non_votant = 0
+    for nv in nvs:
+        non_votant = non_votant + int(nv.text.split(":")[-1])
+    
     # open a new database session
     session = Session()
-    # retrieve the row you want to check by its id and sort it by date
-    scrutin = session.query(Model).filter_by(number=data["number"]).first()
-    if scrutin:
-        return
-    # create a new user object
-    new_data = Model(data)
-    # add the user to the session
-    session.add(new_data)
-    # commit the changes to the database
+    scrutin = Scrutins(
+        numero=numero,
+        legislature=legislature,
+        titre=titre,
+        date_seance=date_object,
+        lien=url,
+        votes_pour=vote_pour,
+        votes_contre=vote_contre,
+        votes_abstention=abstention,
+        non_votants=non_votant
+
+    )
+    session.add(scrutin)
     session.commit()
-    # close the session
     session.close()
 
-# Scrape Scrutins Data
-#TODO function do put non votant status in fiche depute
-def scrutins(url = ''):
-    try:
-        # Start with the first page
-        if url == '':
-            url = 'https://www2.assemblee-nationale.fr/scrutins/liste/(legislature)/16'
-        
-        data = {}
-        while True:
-            # Parse the HTML content
-            soup = make_request(url)
-            # Find the table containing the data
-            table = soup.find('table', class_='scrutins')
-            # Find all the rows in the table
-            rows = table.find('tbody').find_all('tr')
 
-            for row in rows:
-                # Find all cells in a row
-                cells = row.find_all('td')
-                # Extract the votes data from the cells
-                data['number'] = re.sub("[^0-9]", "", cells[0].text)
-                data['date'] = datetime.strptime(cells[1].text, "%d/%m/%Y")
-                data['object'] = re.sub(r'\[.*?\]', '', cells[2].text).strip()
-                data['votes_for'] = cells[3].text
-                data['votes_against'] = cells[4].text
-                data['votes_abstention'] = cells[5].text
+def check_db(legislature, numero):
+    session = Session()
+    # Define the query
+    stmt = (
+        sqlalchemy.select(Scrutins.numero)
+        .where(Scrutins.legislature == legislature)
+        .where(Scrutins.numero == numero)
+    )
+    # Execute the query
+    results = session.execute(stmt).scalars().all()
+    if len(results) != 0:
+        return True
+    return False
 
-                # Extract scrutin data from analysis url
-                analyse_url = 'https://www2.assemblee-nationale.fr' + cells[2].find_all('a')[-1]['href']
-                analyse = make_request(analyse_url)
-                # Extract Number and name of present deputes but Non Votant
-                nv = analyse.find_all('div', class_='Non-votant')
-                list_non_votant = ""
-                data['non_votants'] = 0
-                for i in nv:
-                    data['non_votants'] = data['non_votants'] + int(i.find('p').find('b').text)
-                    list_non_votant = list_non_votant + ', ' + i.find('ul').text.strip().split('(')[0].replace('\xa0', ' ').strip()
-                
-                # Extract votes by group
-                data['group_vote'] = ""
-                groups = analyse.find('ul', {"id": "index-groupe"}).find_all('li')
-                for g in groups:
-                    gr = g.find_all('span')
-                    group = gr[0].text
-                    nb_votes = 0
-                    if len(gr) != 1:
-                        for n in gr[1:]:
-                            nb_votes = nb_votes + int(n.find('b').text)
-                    data['group_vote'] = data['group_vote'] + ' ,' + group + ':' + str(nb_votes)
-                tmp = data['group_vote'].split(';')
-                tmp.pop(0)
-                data['group_vote'] = ';'.join(tmp)
 
-                # Calculations
-                data['total_votes'] = int(data['votes_for']) + int(data['votes_against']) + int(data['votes_abstention']) + int(data['non_votants'])
-                pourcentage_participation = float((data['total_votes'] / 577) * 100)
-                data['pourcentage_abstention'] = round(100 - pourcentage_participation, 2)
-                save_to_database(data, Scrutins)
+def get_last_scrutin(legislature):
+    session = Session()
+    # Define the query
+    stmt = (
+        sqlalchemy.select(Scrutins.numero)
+        .where(Scrutins.legislature == legislature)
+        .order_by(Scrutins.numero.desc())
+    )
 
-            # Get next page
-            url = next_page(soup)
-            # Check if there is a next page
-            if url is None:
-                break
-    
-    except Exception as e:
-        print(f'An error occurred, restarting scrutins scraping...')
-        scrutins(url)
+    last = 0
+    # Execute the query
+    results = session.execute(stmt).scalars().all()
+    if len(results) != 0:
+        last = results[0]
+    session.close()
+    pprint(last)
+    return last
 
+def main():
+    #Create the table in the database
+    Base.metadata.create_all(engine)
+
+    #Start URL
+    url = "https://www.assemblee-nationale.fr/dyn/16/scrutins"
+    parse(url)
+
+if __name__ == "__main__":
+    main()
