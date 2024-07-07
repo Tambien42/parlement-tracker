@@ -87,21 +87,25 @@ def parse(url):
             break
 
 def parse_scrutins(url):
-    response = httpx.get(url)
+    response = httpx.get(url, timeout=30.0)
+    time.sleep(1)
     s = BeautifulSoup(response, 'html.parser')
 
     numero = url.split("/")[-1]
     legislature = url.split("/")[-3]
     titre = s.find("p", {"class": "h6"}).text
     pprint(numero)
-    date = s.find("h2", {"class": "h4"}).text.split("du")[-1].strip()
-    # Replace French names with English names
-    for french, english in french_to_english.items():
-        date = date.replace(french, english)
-    # Define the date format with English names
-    date_format = "%A %d %B %Y"
-    # Convert the date string to a datetime object
-    date_object = datetime.strptime(date, date_format)
+    if s.find("div", {"class": "_centered-text"}).find("h2", {"class": "h4"}).text  != "":
+        date = s.find("div", {"class": "_centered-text"}).find("h2", {"class": "h4"}).text.split("du")[-1].strip()
+         # Replace French names with English names
+        for french, english in french_to_english.items():
+            date = date.replace(french, english)
+        # Define the date format with English names
+        date_format = "%A %d %B %Y"
+        # Convert the date string to a datetime object
+        date_object = datetime.strptime(date, date_format)
+    else:
+        date_object = get_date(int(numero) + 1)   
     vote_pour = 0
     vote_contre = 0
     abstention = 0
@@ -149,6 +153,23 @@ def check_db(legislature, numero):
         return True
     return False
 
+
+def get_date(numero):
+    session = Session()
+    # Define the query
+    stmt = (
+        sqlalchemy.select(Scrutins.date_seance)
+        .where(Scrutins.numero == numero)
+    )
+
+    last = 0
+    # Execute the query
+    results = session.execute(stmt).scalars().all()
+    if len(results) != 0:
+        last = results[0]
+    session.close()
+    pprint(last)
+    return last
 
 def get_last_scrutin(legislature):
     session = Session()
