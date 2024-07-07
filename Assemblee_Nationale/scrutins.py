@@ -67,9 +67,6 @@ def parse(url):
         list = soup.find("section", {"class": "an-section"}).find("ul", {"class": "_centered"}).find_all("a", {"class": "h6"})
         
         for item in list:
-            # if get_last_scrutin(item['href'].split("/")[-3]) >= int(item['href'].split("/")[-1]):
-            #     print("already in db")
-            #     return 
             if check_db(item['href'].split("/")[-3], item['href'].split("/")[-1]) == True:
                 print("already in db")
                 return
