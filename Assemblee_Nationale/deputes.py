@@ -43,7 +43,7 @@ class Deputes(Base):
     rapports: Mapped[str]
 
     def __repr__(self):
-        return f"<Groupes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
+        return f"<Deputes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
 
 def parse(url):
     pass

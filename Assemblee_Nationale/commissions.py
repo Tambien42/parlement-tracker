@@ -28,7 +28,7 @@ class Commissions(Base):
 def parse(url):
     pass
 
-def parse_groupes():
+def parse_commissions():
     pass
 
 def get_president(nom):

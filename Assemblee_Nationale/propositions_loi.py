@@ -23,7 +23,7 @@ class Lois(Base):
     cosignataire: Mapped[str]
 
     def __repr__(self):
-        return f"<Groupes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
+        return f"<Lois(id={self.id}, legislature={self.legislature}, numero={self.numero})>"
 
 def parse(url):
     pass
