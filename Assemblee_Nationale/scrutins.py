@@ -61,12 +61,15 @@ class Scrutins(Base):
 
 def parse(url):
     while True:
-        client = httpx.Client()
-        response = httpx.get(url)
+        response = fetch_url(url)
+        if response == None:
+            return
         soup = BeautifulSoup(response, 'html.parser')
         list = soup.find("section", {"class": "an-section"}).find("ul", {"class": "_centered"}).find_all("a", {"class": "h6"})
-        
+
         for item in list:
+            pprint(item['href'].split("/")[-1])
+
             if check_db(item['href'].split("/")[-3], item['href'].split("/")[-1]) == True:
                 print("already in db")
                 return
@@ -84,14 +87,15 @@ def parse(url):
             break
 
 def parse_scrutins(url):
-    response = httpx.get(url, timeout=30.0)
+    response = fetch_url(url)
+    if response == None:
+            return
     time.sleep(1)
     s = BeautifulSoup(response, 'html.parser')
 
     numero = url.split("/")[-1]
     legislature = url.split("/")[-3]
     titre = s.find("p", {"class": "h6"}).text
-    pprint(numero)
     if s.find("div", {"class": "_centered-text"}).find("h2", {"class": "h4"}).text  != "":
         date = s.find("div", {"class": "_centered-text"}).find("h2", {"class": "h4"}).text.split("du")[-1].strip()
          # Replace French names with English names
@@ -135,6 +139,23 @@ def parse_scrutins(url):
     session.commit()
     session.close()
 
+def fetch_url(url, retries=3, timeout=30.0):
+    attempt = 0
+    while attempt < retries:
+        try:
+            response = httpx.get(url, timeout=timeout)
+            response.raise_for_status()  # Raise an exception for HTTP errors
+            return response
+        except (httpx.TimeoutException, httpx.HTTPStatusError) as err:
+            attempt += 1
+            print(f"Request to {url} timed out. Attempt {attempt} of {retries} failed: {err}. Retrying...")
+            time.sleep(2)  # Wait before retrying
+        except httpx.RequestError as exc:
+            attempt += 1
+            print(f"An error occurred while requesting {exc.request.url!r}.")
+            time.sleep(2)  # Wait before retrying
+    print(f"Failed to fetch {url} after {retries} attempts.")
+    return None
 
 def check_db(legislature, numero):
     session = Session()
@@ -165,7 +186,6 @@ def get_date(numero):
     if len(results) != 0:
         last = results[0]
     session.close()
-    pprint(last)
     return last
 
 def get_last_scrutin(legislature):
@@ -183,7 +203,6 @@ def get_last_scrutin(legislature):
     if len(results) != 0:
         last = results[0]
     session.close()
-    pprint(last)
     return last
 
 def main():
@@ -196,3 +215,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+    #parse_scrutins("https://www.assemblee-nationale.fr/dyn/16/scrutins/890")
+    #pprint(check_db(16, 890))
