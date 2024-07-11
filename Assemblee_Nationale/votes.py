@@ -3,6 +3,9 @@ from bs4 import BeautifulSoup
 import sqlalchemy
 from sqlalchemy.orm import Mapped, mapped_column, sessionmaker, declarative_base
 from datetime import datetime
+import re
+import time
+from urllib.parse import unquote
 from pprint import pprint
 
 # create a database connection
@@ -14,8 +17,8 @@ class Votes(Base):
     __tablename__ = 'votes'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    numero: Mapped[int]
-    legislature: Mapped[str]
+    numero: Mapped[str]
+    legislature: Mapped[int]
     pour: Mapped[str]
     contre: Mapped[str]
     abstention: Mapped[str]
@@ -25,10 +28,89 @@ class Votes(Base):
         return f"<Votes(id={self.id}, legislature={self.legislature}, numero={self.numero})>"
 
 def parse(url):
-    pass
+    while True:
+        response = fetch_url(url)
+        soup = BeautifulSoup(response, 'html.parser')
+        list = soup.find("section", {"class": "an-section"}).find("ul", {"class": "_centered"}).find_all("a", {"class": "h6"})
 
-def parse_vote():
-    pass
+        for item in list:
+            pprint(item['href'].split("/")[-1])
+            if check_db(item['href'].split("/")[-3], item['href'].split("/")[-1]) == True:
+                print("already in db")
+                #return
+                #continue
+
+            url_scrutin = "https://www.assemblee-nationale.fr" + item["href"]
+            parse_vote(unquote(url_scrutin))
+
+        # Loop through all pages
+        pagination = soup.find('div', class_='an-pagination')
+        next_page_link = pagination.find_all('div')[-1].find('a')
+
+        if next_page_link:
+            url = 'https://www2.assemblee-nationale.fr' + next_page_link['href']
+        else:
+            break
+
+def parse_vote(url):
+    response = fetch_url(url)
+    if response == None:
+            return
+    soup = BeautifulSoup(response, 'html.parser')
+    groupes = soup.find_all('ul', id=re.compile('^groupe'))
+
+    numero = url.split("/")[-1]
+    legislature = int(url.split("/")[-3])
+    pour = ""
+    contre = ""
+    abstention = ""
+    non_votants = ""
+
+    # open a new database session
+    session = Session()
+    vote = Votes(
+        numero=numero,
+        legislature=legislature,
+        pour = pour,
+        contre = contre,
+        abstention = abstention,
+        non_votants = non_votants
+    )
+    session.add(vote)
+    session.commit()
+    session.close()
+
+def fetch_url(url, retries=10, timeout=30.0):
+    attempt = 0
+    while attempt < retries:
+        try:
+            response = httpx.get(url, timeout=timeout)
+            response.raise_for_status()  # Raise an exception for HTTP errors
+            return response
+        except (httpx.TimeoutException, httpx.HTTPStatusError) as err:
+            attempt += 1
+            print(f"Request to {url} timed out. Attempt {attempt} of {retries} failed: {err}. Retrying...")
+            time.sleep(2)  # Wait before retrying
+        except httpx.RequestError as exc:
+            attempt += 1
+            print(f"An error occurred while requesting {exc.request.url!r}. Attempt {attempt} of {retries}. Retrying...")
+            time.sleep(2)  # Wait before retrying
+    print(f"Failed to fetch {url} after {retries} attempts.")
+    return None
+
+def check_db(legislature, numero):
+    session = Session()
+    # Define the query
+    stmt = (
+        sqlalchemy.select(Votes.numero)
+        .where(Votes.legislature == legislature)
+        .where(Votes.numero == numero)
+    )
+    # Execute the query
+    results = session.execute(stmt).scalars().all()
+    if len(results) != 0:
+        return True
+    return False
 
 def get_votes(legislature):
     session = Session()
@@ -45,7 +127,7 @@ def main():
     #Create the table in the database
     Base.metadata.create_all(engine)
     #Start URL
-    url = "https://www2.assemblee-nationale.fr/deputes/liste/alphabetique"
+    url = "https://www.assemblee-nationale.fr/dyn/16/scrutins"
     parse(url)
 
 if __name__ == "__main__":
