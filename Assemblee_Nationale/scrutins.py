@@ -47,7 +47,7 @@ class Scrutins(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     legislature: Mapped[int]
-    numero: Mapped[int]
+    numero: Mapped[str]
     titre: Mapped[str]
     date_seance: Mapped[datetime]
     lien: Mapped[str]
@@ -62,20 +62,16 @@ class Scrutins(Base):
 def parse(url):
     while True:
         response = fetch_url(url)
-        if response == None:
-            return
         soup = BeautifulSoup(response, 'html.parser')
         list = soup.find("section", {"class": "an-section"}).find("ul", {"class": "_centered"}).find_all("a", {"class": "h6"})
 
         for item in list:
-            pprint(item['href'].split("/")[-1])
-
             if check_db(item['href'].split("/")[-3], item['href'].split("/")[-1]) == True:
                 print("already in db")
                 return
-        
+
             url_scrutin = "https://www.assemblee-nationale.fr" + item["href"]
-            parse_scrutins(unquote(url_scrutin))
+            parse_scrutin(unquote(url_scrutin))
 
         # Loop through all pages
         pagination = soup.find('div', class_='an-pagination')
@@ -86,15 +82,14 @@ def parse(url):
         else:
             break
 
-def parse_scrutins(url):
+def parse_scrutin(url):
     response = fetch_url(url)
     if response == None:
             return
-    time.sleep(1)
     s = BeautifulSoup(response, 'html.parser')
 
     numero = url.split("/")[-1]
-    legislature = url.split("/")[-3]
+    legislature = int(url.split("/")[-3])
     titre = s.find("p", {"class": "h6"}).text
     if s.find("div", {"class": "_centered-text"}).find("h2", {"class": "h4"}).text  != "":
         date = s.find("div", {"class": "_centered-text"}).find("h2", {"class": "h4"}).text.split("du")[-1].strip()
@@ -139,7 +134,7 @@ def parse_scrutins(url):
     session.commit()
     session.close()
 
-def fetch_url(url, retries=3, timeout=30.0):
+def fetch_url(url, retries=10, timeout=30.0):
     attempt = 0
     while attempt < retries:
         try:
@@ -152,7 +147,7 @@ def fetch_url(url, retries=3, timeout=30.0):
             time.sleep(2)  # Wait before retrying
         except httpx.RequestError as exc:
             attempt += 1
-            print(f"An error occurred while requesting {exc.request.url!r}.")
+            print(f"An error occurred while requesting {exc.request.url!r}. Attempt {attempt} of {retries}. Retrying...")
             time.sleep(2)  # Wait before retrying
     print(f"Failed to fetch {url} after {retries} attempts.")
     return None
@@ -215,5 +210,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    #parse_scrutins("https://www.assemblee-nationale.fr/dyn/16/scrutins/890")
-    #pprint(check_db(16, 890))

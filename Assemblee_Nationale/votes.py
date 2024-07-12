@@ -34,11 +34,9 @@ def parse(url):
         list = soup.find("section", {"class": "an-section"}).find("ul", {"class": "_centered"}).find_all("a", {"class": "h6"})
 
         for item in list:
-            pprint(item['href'].split("/")[-1])
             if check_db(item['href'].split("/")[-3], item['href'].split("/")[-1]) == True:
                 print("already in db")
-                #return
-                #continue
+                return
 
             url_scrutin = "https://www.assemblee-nationale.fr" + item["href"]
             parse_vote(unquote(url_scrutin))
@@ -61,20 +59,35 @@ def parse_vote(url):
 
     numero = url.split("/")[-1]
     legislature = int(url.split("/")[-3])
-    pour = ""
-    contre = ""
-    abstention = ""
-    non_votants = ""
+    pour = []
+    contre = []
+    abstention = []
+    non_votants = []
+    for groupe in groupes:
+        votes = groupe.find('ul').find_all('li', {"class":"relative-flex"})
+        for vote in votes:
+            if vote.find("span", {"class":"h6"}).text == "Pour":
+                for depute  in vote.find_all('li', {"class":"_no-border"}):
+                    pour.append(depute.find('a')['href'].split('/')[-1])
+            if vote.find("span", {"class":"h6"}).text== "Contre":
+                for depute  in vote.find_all('li', {"class":"_no-border"}):
+                    contre.append(depute.find('a')['href'].split('/')[-1])
+            if vote.find("span", {"class":"h6"}).text == "Abstention":
+                for depute  in vote.find_all('li', {"class":"_no-border"}):
+                    abstention.append(depute.find('a')['href'].split('/')[-1])
+            if vote.find("span", {"class":"h6"}).text == "Non votant" or vote.text == "Non votants":
+                for depute  in vote.find_all('li', {"class":"_no-border"}):
+                    non_votants.append(depute.find('a')['href'].split('/')[-1])
 
     # open a new database session
     session = Session()
     vote = Votes(
         numero=numero,
         legislature=legislature,
-        pour = pour,
-        contre = contre,
-        abstention = abstention,
-        non_votants = non_votants
+        pour = ', '.join(map(str, pour)),
+        contre = ', '.join(map(str, contre)),
+        abstention = ', '.join(map(str, abstention)),
+        non_votants = ', '.join(map(str, non_votants))
     )
     session.add(vote)
     session.commit()
