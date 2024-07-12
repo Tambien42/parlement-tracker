@@ -67,16 +67,16 @@ def parse_vote(url):
         votes = groupe.find('ul').find_all('li', {"class":"relative-flex"})
         for vote in votes:
             if vote.find("span", {"class":"h6"}).text == "Pour":
-                for depute  in vote.find_all('li', {"class":"_no-border"}):
+                for depute in vote.find_all('li', {"class":"_no-border"}):
                     pour.append(depute.find('a')['href'].split('/')[-1])
             if vote.find("span", {"class":"h6"}).text== "Contre":
-                for depute  in vote.find_all('li', {"class":"_no-border"}):
+                for depute in vote.find_all('li', {"class":"_no-border"}):
                     contre.append(depute.find('a')['href'].split('/')[-1])
             if vote.find("span", {"class":"h6"}).text == "Abstention":
-                for depute  in vote.find_all('li', {"class":"_no-border"}):
+                for depute in vote.find_all('li', {"class":"_no-border"}):
                     abstention.append(depute.find('a')['href'].split('/')[-1])
             if vote.find("span", {"class":"h6"}).text == "Non votant" or vote.text == "Non votants":
-                for depute  in vote.find_all('li', {"class":"_no-border"}):
+                for depute in vote.find_all('li', {"class":"_no-border"}):
                     non_votants.append(depute.find('a')['href'].split('/')[-1])
 
     # open a new database session
