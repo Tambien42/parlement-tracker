@@ -2,7 +2,7 @@ import httpx
 from bs4 import BeautifulSoup
 import sqlalchemy
 from sqlalchemy.orm import Mapped, mapped_column, sessionmaker, declarative_base
-from datetime import datetime
+from datetime import datetime, date
 import re
 import time
 from urllib.parse import unquote
@@ -21,10 +21,11 @@ class Groupes(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     legislature: Mapped[int]
     nom: Mapped[str]
+    groupe_id: Mapped[str]
     date: Mapped[datetime]
-    president = Mapped[str]
-    membres = Mapped[str]
-    affilies = Mapped[str]
+    president: Mapped[str]
+    membres: Mapped[str]
+    apparentes: Mapped[str]
 
     def __repr__(self):
         return f"<Groupes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
@@ -32,25 +33,63 @@ class Groupes(Base):
 def parse(url):
     response = fetch_url(url)
     soup = BeautifulSoup(response, 'html.parser')
-    #list = soup.find("section", {"class": "an-section"}).find_all("a")
     list = soup.find_all("div", attrs={"data-organe-id" : re.compile(r".*")})
-    #pprint(list)
 
     for groupe in list:
-        pprint(groupe["data-organe-id"])
-        url_groupe = "https://www2.assemblee-nationale.fr/instances/fiche/" + groupe["data-organe-id"] + "/null/ajax/1/name/Composition/legislature/17"
-        parse_groupes(url_groupe)
+        nom = groupe.find("span").text
+        url_groupe = "https://www2.assemblee-nationale.fr/instances/fiche/OMC_" + groupe["data-organe-id"] + "/null/ajax/1/name/Composition/legislature/17"
+        parse_groupes(url_groupe, nom)
 
-def parse_groupes(url):
-    response = subprocess.check_output('curl "https://www2.assemblee-nationale.fr/instances/fiche/OMC_PO840056/null/ajax/1/name/Composition/legislature/17"', shell=True)
+#TODO check database if data is the same
+def parse_groupes(url, nom):
+    command = 'curl "' + url + '"'
+    response = subprocess.check_output(command, shell=True)
     soup = BeautifulSoup(response, 'html.parser')
-    status = soup.find_all("h3")
-    pprint(status)
-    for row in status:
-        pprint(row.text)
-        deputes = row.find_next("ul").find_all("a", {"class": "instance-composition-nom"})
-        pprint(deputes)
- 
+    list = soup.find_all("h3")
+    nom = nom
+    today = date.today()
+    legislature = url.split("/")[-1]
+    groupe_id = url.split("_")[-1].split("/")[0]
+    president = []
+    membres = []
+    apparentes = []
+    for status in list:
+        poste = status.text
+        pprint(poste)
+        if poste == "Président" or poste == re.compile("^Président"):
+            deputes = status.find_next("ul").find_all("a", {"class": "instance-composition-nom"})
+            for depute in deputes:
+                president.append(depute["href"].split("_")[-1])
+        if poste == "Membres" or poste == "Députés non-inscrits":
+            deputes = status.find_next("ul").find_all("a", {"class": "instance-composition-nom"})
+            for depute in deputes:
+                membres.append(depute["href"].split("_")[-1])
+        if poste == "Apparenté" or poste == "Apparentée" or poste == re.compile("^Apparent"):
+            deputes = status.find_next("ul").find_all("a", {"class": "instance-composition-nom"})
+            for depute in deputes:
+                apparentes.append(depute["href"].split("_")[-1])
+    
+    
+    print("president")
+    pprint(president)
+    print("membres")
+    pprint(membres)
+    print("apparentes")
+    pprint(apparentes)
+    # session = Session()
+    # groupe = Groupes(
+    #     nom=nom,
+    #     groupe_id=groupe_id,
+    #     legislature=legislature,
+    #     date=today,
+    #     president = ', '.join(map(str, president)),
+    #     membres = ', '.join(map(str, membres)),
+    #     apparentes = ', '.join(map(str, apparentes))
+    # )
+    # session.add(groupe)
+    # session.commit()
+    # session.close()
+
 def fetch_url(url, retries=10, timeout=30.0):
     attempt = 0
     while attempt < retries:
