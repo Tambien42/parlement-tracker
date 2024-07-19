@@ -40,7 +40,7 @@ def parse(url):
         url_groupe = "https://www2.assemblee-nationale.fr/instances/fiche/OMC_" + groupe["data-organe-id"] + "/null/ajax/1/name/Composition/legislature/17"
         parse_groupes(url_groupe, nom)
 
-#TODO check database if data is the same
+#TODO sort db data and website data?
 def parse_groupes(url, nom):
     command = 'curl "' + url + '"'
     response = subprocess.check_output(command, shell=True)
@@ -55,8 +55,7 @@ def parse_groupes(url, nom):
     apparentes = []
     for status in list:
         poste = status.text
-        pprint(poste)
-        if poste == "Président" or poste == re.compile("^Président"):
+        if re.match(r"^Président", poste):
             deputes = status.find_next("ul").find_all("a", {"class": "instance-composition-nom"})
             for depute in deputes:
                 president.append(depute["href"].split("_")[-1])
@@ -64,31 +63,46 @@ def parse_groupes(url, nom):
             deputes = status.find_next("ul").find_all("a", {"class": "instance-composition-nom"})
             for depute in deputes:
                 membres.append(depute["href"].split("_")[-1])
-        if poste == "Apparenté" or poste == "Apparentée" or poste == re.compile("^Apparent"):
+        if re.match(r"^Apparent", poste):
             deputes = status.find_next("ul").find_all("a", {"class": "instance-composition-nom"})
             for depute in deputes:
                 apparentes.append(depute["href"].split("_")[-1])
     
+    results = check_db(nom, legislature, groupe_id)
     
-    print("president")
-    pprint(president)
-    print("membres")
-    pprint(membres)
-    print("apparentes")
-    pprint(apparentes)
-    # session = Session()
-    # groupe = Groupes(
-    #     nom=nom,
-    #     groupe_id=groupe_id,
-    #     legislature=legislature,
-    #     date=today,
-    #     president = ', '.join(map(str, president)),
-    #     membres = ', '.join(map(str, membres)),
-    #     apparentes = ', '.join(map(str, apparentes))
-    # )
-    # session.add(groupe)
-    # session.commit()
-    # session.close()
+    if results[0] == ', '.join(map(str, president)) and results[1] == ', '.join(map(str, membres)) and results[2] == ', '.join(map(str, apparentes)):
+        return
+
+    session = Session()
+    groupe = Groupes(
+        nom=nom,
+        groupe_id=groupe_id,
+        legislature=legislature,
+        date=today,
+        president = ', '.join(map(str, president)),
+        membres = ', '.join(map(str, membres)),
+        apparentes = ', '.join(map(str, apparentes))
+    )
+    session.add(groupe)
+    session.commit()
+    session.close()
+
+def check_db(nom, legislature, groupe_id):
+    session = Session()
+    # Define the query
+    stmt = (
+        sqlalchemy.select(Groupes.president, Groupes.membres, Groupes.apparentes)
+        .where(Groupes.legislature == legislature)
+        .where(Groupes.groupe_id == groupe_id)
+        .order_by(Groupes.date.desc())
+    )
+    # Execute the query
+    results = session.execute(stmt).fetchall()
+
+    if len(results) != 0:
+        last = results[0]
+        return last
+    return False
 
 def fetch_url(url, retries=10, timeout=30.0):
     attempt = 0
