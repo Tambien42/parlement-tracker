@@ -56,8 +56,8 @@ class Deputes(Base):
     date_naissance: Mapped[datetime]
     date_election: Mapped[datetime]
     date_debut_mandat: Mapped[datetime]
-    date_fin_mandat: Mapped[datetime]
-    raison_fin: Mapped[str]
+    date_fin_mandat: Mapped[datetime] = mapped_column(nullable=True)
+    raison_fin: Mapped[str] = mapped_column(nullable=True)
     circonscription: Mapped[str]
     numero_siege: Mapped[int]
     groupe: Mapped[str]
@@ -66,17 +66,26 @@ class Deputes(Base):
     def __repr__(self):
         return f"<Deputes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
 
-#TODO get list of deputes from db
-#TODO merge list with deputes from website
 def parse(url):
     response = fetch_url(url)
     soup = BeautifulSoup(response, 'html.parser')
     list = soup.find("div", {"id": "deputes-list"}).find_all("li")
 
-    for depute in list:
-        url_depute = "https://www.assemblee-nationale.fr/dyn/deputes/" + depute.find("a")["href"].split("/")[-1].split("_")[-1]
-        parse_depute(url_depute)
+    # get deputes from db
+    db = get_all_deputes(17)
 
+    # get deputes from website
+    for depute in list:
+        db.append(depute.find("a")["href"].split("/")[-1].split("_")[-1])
+
+    # Convert to a set to remove duplicates
+    results = set(db)
+    #pprint(results)
+    for depute in results:
+        pprint(depute)
+        url_depute = "https://www.assemblee-nationale.fr/dyn/deputes/" + depute
+        parse_depute(url_depute)
+#TODO get last legislature of global variable
 def parse_depute(url):
     # open a new database session
     session = Session()
@@ -88,8 +97,8 @@ def parse_depute(url):
     mandat = soup.find("span", {"class": "_colored _bold _big"}).text.split("|")[-1].strip()
     depute_id = url.split("/")[-1]
     legislature = 17
-    pprint(soup.find("h1").text)
-    if re.match(r"^Mandat clos", mandat):
+    
+    if re.match(r"^Mandat clos", mandat) and check_db(legislature, depute_id):
         fin = soup.find("span", text=re.compile("Date de fin de mandat")).parent.find_all("span")[-1].text
         date_pattern = r'(?:\d{1,2}|1er) [a-zA-Zéû]+ \d{4}'
         dates = re.findall(date_pattern, fin)
@@ -97,7 +106,7 @@ def parse_depute(url):
         for french, english in french_to_english.items():
             date = dates[0].replace(french, english)
         # Define the date format with English names
-        date_format = "%A %d %B %Y"
+        date_format = "%e %B %Y"
         # Convert the date string to a datetime object
         date_object = datetime.strptime(date, date_format)
         date_fin_mandat = date_object
@@ -117,17 +126,28 @@ def parse_depute(url):
             session.commit()
 
         return
+    
+    elif check_db(legislature, depute_id):
+        print('stop')
+        return
 
     nom = soup.find("h1").text
     bio = soup.find("span", text=re.compile("Biographie")).parent.find("p")
-    profession = bio.text.split(")")[-1]
+    profession = bio.text.split(")")[-1].replace("-", "").strip()
     date_pattern = r'(?:\d{1,2}|1er) [a-zA-Zéû]+ \d{4}'
     dates = re.findall(date_pattern, bio.text)
-    date_naissance = dates[0]
+    # Replace French names with English names
+    for french, english in french_to_english.items():
+        dates[0] = dates[0].replace(french, english)
+    # Define the date format with English names
+    date_format = "%d %B %Y"
+    # Convert the date string to a datetime object
+    date_object = datetime.strptime(dates[0], date_format)
+    date_naissance = date_object
 
     photo_url = soup.find("div", {"class": "acteur-photo-image"}).find("img")["src"]
     folder = "../images/"
-    photo = "PA"  + photo_url.split("/")[-1] + "-" + legislature
+    photo = "PA"  + photo_url.split("/")[-1] + "-" + str(legislature)
     photo_path = os.path.abspath(folder) + photo
     #download_image(photo_url, folder, photo)
 
@@ -142,7 +162,9 @@ def parse_depute(url):
     circonscription_numero = query_params.get('circonscriptionNumero', [None])[0]
 
     circonscription = departement_numero + "-" + circonscription_numero
-    numero_siege = soup.find("a",  href=re.compile(r'^/dyn/vos-deputes/hemicycle?'))["href"].split("=")[-1]
+    numero_siege = ""
+    if soup.find("a",  href=re.compile(r'^/dyn/vos-deputes/hemicycle?')):
+        numero_siege = soup.find("a",  href=re.compile(r'^/dyn/vos-deputes/hemicycle?'))["href"].split("=")[-1]
     groupe = soup.find("a", {"class": "h4"}).text.strip()
     mail = soup.find("a",  href=re.compile(r'^mailto:'))["href"].split(":")[-1]
 
@@ -150,19 +172,21 @@ def parse_depute(url):
     archive = fetch_url(url_archive)
     soupe = BeautifulSoup(archive, "html.parser")
 
-    date = soupe.find("li", {"class": "togglable-box"}).find("ul").find("span", {"class": "relative-block"}).text
+    #date = soupe.find("li", {"class": "togglable-box"}).find("ul").find("span", {"class": "relative-block"}).text
+    #date = soupe.find("li", {"class": "togglable-box"}).find("ul").find("span", text=re.compile(r'^\d')).text
+    date = soupe.find("li", {"class": "togglable-box"}).find("ul").find("sup").parent.text
     date_pattern = r'(?:\d{1,2}|1er) [a-zA-Zéû]+ \d{4}'
     dates = re.findall(date_pattern, date)
     # Replace French names with English names
     for french, english in french_to_english.items():
-        date = dates[0].replace(french, english)
-        date2 = dates[1].replace(french, english)
+        dates[0] = dates[0].replace(french, english)
+        dates[1] = dates[1].replace(french, english)
     # Define the date format with English names
-    date_format = "%A %d %B %Y"
+    date_format = "%d %B %Y"
     # Convert the date string to a datetime object
-    date_object = datetime.strptime(date, date_format)
+    date_object = datetime.strptime(dates[0], date_format)
     date_election = date_object
-    date_object = datetime.strptime(date2, date_format)
+    date_object = datetime.strptime(dates[1], date_format)
     date_debut_mandat = date_object
 
     depute = Deputes(
@@ -174,8 +198,8 @@ def parse_depute(url):
         date_naissance=date_naissance,
         date_election=date_election,
         date_debut_mandat=date_debut_mandat,
-        date_fin_mandat="",
-        raison_fin="",
+        date_fin_mandat=None,
+        raison_fin=None,
         circonscription=circonscription,
         numero_siege=numero_siege,
         groupe=groupe,
@@ -225,16 +249,31 @@ def download_image(url, folder, filename):
     except httpx.HTTPStatusError as err:
         print(f"HTTP error occurred: {err.response.status_code} - {err.response.reason_phrase}")
 
+def check_db(legislature, depute_id):
+    session = Session()
+    # Define the query
+    stmt = (
+        sqlalchemy.select(Deputes.depute_id)
+        .where(Deputes.legislature == legislature)
+        .where(Deputes.depute_id == depute_id)
+    )
+    # Execute the query
+    results = session.execute(stmt).scalars().all()
+    if len(results) != 0:
+        return True
+    return False
+
 def get_all_deputes(legislature):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Deputes.deputes_id)
+        sqlalchemy.select(Deputes.depute_id)
         .where(Deputes.legislature == legislature)
     )
     # Execute the query
     results = session.execute(stmt).fetchall()
-    return results
+    list = [r[0] for r in results]
+    return list
 
 def main():
     #Create the table in the database
