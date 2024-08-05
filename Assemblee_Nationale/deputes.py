@@ -97,7 +97,7 @@ def parse_depute(url):
     mandat = soup.find("span", {"class": "_colored _bold _big"}).text.split("|")[-1].strip()
     depute_id = url.split("/")[-1]
     legislature = 17
-    
+
     if re.match(r"^Mandat clos", mandat) and check_db(legislature, depute_id):
         fin = soup.find("span", text=re.compile("Date de fin de mandat")).parent.find_all("span")[-1].text
         date_pattern = r'(?:\d{1,2}|1er) [a-zA-Zéû]+ \d{4}'
@@ -149,7 +149,7 @@ def parse_depute(url):
     folder = "../images/"
     photo = "PA"  + photo_url.split("/")[-1] + "-" + str(legislature)
     photo_path = os.path.abspath(folder) + photo
-    #download_image(photo_url, folder, photo)
+    download_image(photo_url, folder, photo)
 
     # Parse the URL to obtain the query component
     url_circo = soup.find("a",  href=re.compile(r'^/dyn/vos-deputes/carte-departements'))["href"]
@@ -172,8 +172,6 @@ def parse_depute(url):
     archive = fetch_url(url_archive)
     soupe = BeautifulSoup(archive, "html.parser")
 
-    #date = soupe.find("li", {"class": "togglable-box"}).find("ul").find("span", {"class": "relative-block"}).text
-    #date = soupe.find("li", {"class": "togglable-box"}).find("ul").find("span", text=re.compile(r'^\d')).text
     date = soupe.find("li", {"class": "togglable-box"}).find("ul").find("sup").parent.text
     date_pattern = r'(?:\d{1,2}|1er) [a-zA-Zéû]+ \d{4}'
     dates = re.findall(date_pattern, date)
