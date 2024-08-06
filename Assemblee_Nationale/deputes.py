@@ -59,9 +59,9 @@ class Deputes(Base):
     date_fin_mandat: Mapped[datetime] = mapped_column(nullable=True)
     raison_fin: Mapped[str] = mapped_column(nullable=True)
     circonscription: Mapped[str]
-    numero_siege: Mapped[int]
+    numero_siege: Mapped[int] = mapped_column(nullable=True)
     groupe: Mapped[str]
-    mail: Mapped[str]
+    mail: Mapped[str] = mapped_column(nullable=True)
 
     def __repr__(self):
         return f"<Deputes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
@@ -97,6 +97,7 @@ def parse_depute(url):
     mandat = soup.find("span", {"class": "_colored _bold _big"}).text.split("|")[-1].strip()
     depute_id = url.split("/")[-1]
     legislature = 17
+    groupe = soup.find("a", {"class": "h4"}).text.strip()
 
     if re.match(r"^Mandat clos", mandat) and check_db(legislature, depute_id):
         fin = soup.find("span", text=re.compile("Date de fin de mandat")).parent.find_all("span")[-1].text
@@ -115,6 +116,7 @@ def parse_depute(url):
         data_within_parentheses = re.findall(pattern, fin)
         raison = data_within_parentheses[0]
         mail = ""
+        numero_siege = ""
 
         # Query for the user you want to update
         depute = session.query(Deputes).filter_by(depute_id=depute_id, legislature=legislature).first()
@@ -122,16 +124,21 @@ def parse_depute(url):
             depute.date_fin_mandat = date_fin_mandat
             depute.raison_fin = raison
             depute.mail = mail
+            depute.numero_siege = numero_siege
             # Commit the changes
             session.commit()
 
         return
     
     elif check_db(legislature, depute_id):
+        #TODO check if data like groupe changed
         print('stop')
         return
 
-    nom = soup.find("h1").text
+    name = soup.find("h1").text.split()
+    # Remove the first word
+    remaining_words = name[1:]
+    nom = ' '.join(remaining_words)
     bio = soup.find("span", text=re.compile("Biographie")).parent.find("p")
     profession = bio.text.split(")")[-1].replace("-", "").strip()
     date_pattern = r'(?:\d{1,2}|1er) [a-zA-Zéû]+ \d{4}'
@@ -165,7 +172,6 @@ def parse_depute(url):
     numero_siege = ""
     if soup.find("a",  href=re.compile(r'^/dyn/vos-deputes/hemicycle?')):
         numero_siege = soup.find("a",  href=re.compile(r'^/dyn/vos-deputes/hemicycle?'))["href"].split("=")[-1]
-    groupe = soup.find("a", {"class": "h4"}).text.strip()
     mail = soup.find("a",  href=re.compile(r'^mailto:'))["href"].split(":")[-1]
 
     url_archive = "https://www.assemblee-nationale.fr/dyn/deputes/" + depute_id + "/fonctions"
