@@ -84,10 +84,10 @@ def parse_vote(url):
     vote = Votes(
         numero=numero,
         legislature=legislature,
-        pour = ', '.join(map(str, pour)),
-        contre = ', '.join(map(str, contre)),
-        abstention = ', '.join(map(str, abstention)),
-        non_votants = ', '.join(map(str, non_votants))
+        pour = ','.join(map(str, pour)),
+        contre = ','.join(map(str, contre)),
+        abstention = ','.join(map(str, abstention)),
+        non_votants = ','.join(map(str, non_votants))
     )
     session.add(vote)
     session.commit()
