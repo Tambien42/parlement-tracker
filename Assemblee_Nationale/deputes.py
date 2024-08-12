@@ -85,6 +85,7 @@ def parse(url):
         pprint(depute)
         url_depute = "https://www.assemblee-nationale.fr/dyn/deputes/" + depute
         parse_depute(url_depute)
+
 #TODO get last legislature of global variable
 def parse_depute(url):
     # open a new database session
@@ -98,6 +99,23 @@ def parse_depute(url):
     depute_id = url.split("/")[-1]
     legislature = 17
     groupe = soup.find("a", {"class": "h4"}).text.strip()
+
+    name = soup.find("h1").text.split()
+    # Remove the first word
+    remaining_words = name[1:]
+    nom = ' '.join(remaining_words)
+    bio = soup.find("span", text=re.compile("Biographie")).parent.find("p")
+    profession = bio.text.split(")")[-1].replace("-", "").strip()
+    date_pattern = r'(?:\d{1,2}|1er) [a-zA-Zéû]+ \d{4}'
+    dates = re.findall(date_pattern, bio.text)
+    # Replace French names with English names
+    for french, english in french_to_english.items():
+        dates[0] = dates[0].replace(french, english)
+    # Define the date format with English names
+    date_format = "%d %B %Y"
+    # Convert the date string to a datetime object
+    date_object = datetime.strptime(dates[0], date_format)
+    date_naissance = date_object
 
     if re.match(r"^Mandat clos", mandat) and check_db(legislature, depute_id):
         fin = soup.find("span", text=re.compile("Date de fin de mandat")).parent.find_all("span")[-1].text
@@ -131,26 +149,17 @@ def parse_depute(url):
         return
     
     elif check_db(legislature, depute_id):
-        #TODO check if data like groupe changed
-        print('stop')
+        depute = session.query(Deputes).filter_by(depute_id=depute_id, legislature=legislature).first()
+        if depute:
+            if depute.profession != profession:
+                depute.profession = profession
+            if depute.groupe != groupe:
+                depute.groupe = groupe
+            if depute.nom != nom:
+                depute.nom = nom
+            # Commit the changes
+            session.commit()
         return
-
-    name = soup.find("h1").text.split()
-    # Remove the first word
-    remaining_words = name[1:]
-    nom = ' '.join(remaining_words)
-    bio = soup.find("span", text=re.compile("Biographie")).parent.find("p")
-    profession = bio.text.split(")")[-1].replace("-", "").strip()
-    date_pattern = r'(?:\d{1,2}|1er) [a-zA-Zéû]+ \d{4}'
-    dates = re.findall(date_pattern, bio.text)
-    # Replace French names with English names
-    for french, english in french_to_english.items():
-        dates[0] = dates[0].replace(french, english)
-    # Define the date format with English names
-    date_format = "%d %B %Y"
-    # Convert the date string to a datetime object
-    date_object = datetime.strptime(dates[0], date_format)
-    date_naissance = date_object
 
     photo_url = soup.find("div", {"class": "acteur-photo-image"}).find("img")["src"]
     folder = "../images/"
