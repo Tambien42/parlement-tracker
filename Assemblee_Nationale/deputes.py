@@ -82,6 +82,9 @@ def parse(url):
     results = set(db)
     #pprint(results)
     for depute in results:
+        # vote en congrès skip les sénateurs
+        if re.match(r"^PA\d+", depute) == None:
+            continue
         pprint(depute)
         url_depute = "https://www.assemblee-nationale.fr/dyn/deputes/" + depute
         parse_depute(url_depute)
