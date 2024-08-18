@@ -79,9 +79,9 @@ def parse_groupes(url, nom):
         groupe_id=groupe_id,
         legislature=legislature,
         date=today,
-        president = ', '.join(map(str, president)),
-        membres = ', '.join(map(str, membres)),
-        apparentes = ', '.join(map(str, apparentes))
+        president = ','.join(map(str, president)),
+        membres = ','.join(map(str, membres)),
+        apparentes = ','.join(map(str, apparentes))
     )
     session.add(groupe)
     session.commit()
