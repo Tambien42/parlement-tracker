@@ -102,7 +102,7 @@ def check_db(nom, legislature, groupe_id):
     if len(results) != 0:
         last = results[0]
         return last
-    return False
+    return None
 
 def fetch_url(url, retries=10, timeout=30.0):
     attempt = 0
