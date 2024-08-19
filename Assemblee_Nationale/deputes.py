@@ -9,6 +9,7 @@ import time
 from urllib.parse import unquote
 from pprint import pprint
 from urllib.parse import urlparse, parse_qs
+import requests
 
 # create a database connection
 engine = sqlalchemy.create_engine('sqlite:///parlements.db')
@@ -65,6 +66,20 @@ class Deputes(Base):
 
     def __repr__(self):
         return f"<Deputes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
+
+class FonctionsAN(Base):
+    __tablename__ = 'fonctions_an'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    legislature: Mapped[int]
+    president: Mapped[str]
+    vice_presidents: Mapped[str]
+    questeurs: Mapped[str]
+    secretaires: Mapped[str]
+    date: Mapped[datetime]
+
+    def __repr__(self):
+        return f"<FonctionsAN(id={self.id}, legislature={self.legislature}, president={self.president})>"
 
 def parse(url):
     response = fetch_url(url)
@@ -226,6 +241,70 @@ def parse_depute(url):
     session.commit()
     session.close()
 
+def parse_fonctions(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    fonctions = soup.find("div", {"id": "composition"}).find_all("h3")
+    
+    president = []
+    vicep = []
+    questeurs = []
+    secretaires = []
+    for f in fonctions:
+        if re.match(r"^Président", f.text):
+            president.append(f.parent.find("a")["href"].split("_")[-1])
+        if re.match(r"^Vice", f.text):
+            vps = f.parent.find_all("a")
+            for vp in vps:
+                vicep.append(vp["href"].split("_")[-1])
+        if re.match(r"^Quest", f.text):
+            qs = f.parent.find_all("a")
+            for q in qs:
+                questeurs.append(q["href"].split("_")[-1])
+        if re.match(r"^Secrétaires", f.text):
+            secs = f.parent.find_all("a")
+            for sec in secs:
+                secretaires.append(sec["href"].split("_")[-1])
+
+    results = check_fonctions(legislature)
+    if (results and
+        results[0] == ','.join(map(str, president))  and 
+        results[1] == ','.join(map(str, vicep)) and 
+        results[2] == ','.join(map(str, questeurs)) and 
+        results[3] == ','.join(map(str, secretaires))):
+        print("no changes in Bureau")
+        return
+
+    # # open a new database session
+    session = Session()
+    depute = FonctionsAN(
+        legislature=legislature,
+        president=','.join(map(str, president)),
+        vice_presidents=','.join(map(str, vicep)),
+        questeurs =  ','.join(map(str, questeurs)),
+        secretaires = ','.join(map(str, secretaires)),
+        date = date.today()
+    )
+    session.add(depute)
+    session.commit()
+    session.close()
+
+def check_fonctions(legislature):
+    session = Session()
+    # Define the query
+    stmt = (
+        sqlalchemy.select(FonctionsAN.president, FonctionsAN.vice_presidents, FonctionsAN.questeurs, FonctionsAN.secretaires)
+        .where(FonctionsAN.legislature == legislature)
+        .order_by(FonctionsAN.date.desc())
+    )
+    # Execute the query
+    results = session.execute(stmt).fetchall()
+
+    if len(results) != 0:
+        last = results[0]
+        return last
+    return None
+
 def fetch_url(url, retries=10, timeout=30.0):
     attempt = 0
     while attempt < retries:
@@ -297,6 +376,9 @@ def main():
     #Start URL
     url = "https://www2.assemblee-nationale.fr/deputes/liste/alphabetique"
     parse(url)
+    # get fonctions du bureau de l'an
+    url = "https://www2.assemblee-nationale.fr/layout/set/ajax/content/view/embed/189123undefined"
+    parse_fonctions(url)
 
 if __name__ == "__main__":
     main()
