@@ -2,7 +2,7 @@ import httpx
 from bs4 import BeautifulSoup
 import sqlalchemy
 from sqlalchemy.orm import Mapped, mapped_column, sessionmaker, declarative_base
-from datetime import datetime
+from datetime import datetime, date
 import re
 import os
 import time
@@ -10,6 +10,9 @@ from urllib.parse import unquote
 from pprint import pprint
 from urllib.parse import urlparse, parse_qs
 import requests
+
+# Global variable
+legislature = 17
 
 # create a database connection
 engine = sqlalchemy.create_engine('sqlite:///parlements.db')
@@ -87,7 +90,7 @@ def parse(url):
     list = soup.find("div", {"id": "deputes-list"}).find_all("li")
 
     # get deputes from db
-    db = get_all_deputes(17)
+    db = get_all_deputes(legislature)
 
     # get deputes from website
     for depute in list:
@@ -115,7 +118,6 @@ def parse_depute(url):
     soup = BeautifulSoup(response, 'html.parser')
     mandat = soup.find("span", {"class": "_colored _bold _big"}).text.split("|")[-1].strip()
     depute_id = url.split("/")[-1]
-    legislature = 17
     groupe = soup.find("a", {"class": "h4"}).text.strip()
 
     name = soup.find("h1").text.split()
@@ -181,7 +183,8 @@ def parse_depute(url):
 
     photo_url = soup.find("div", {"class": "acteur-photo-image"}).find("img")["src"]
     folder = "../images/"
-    photo = "PA"  + photo_url.split("/")[-1] + "-" + str(legislature)
+    ext = photo_url.split("/")[-1].split(".")
+    photo = "PA"  + ext[0] +  "-" + str(legislature) + ext[-1]
     photo_path = os.path.abspath(folder) + photo
     download_image(photo_url, folder, photo)
 
