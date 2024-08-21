@@ -6,9 +6,12 @@ from datetime import datetime, date
 import re
 import time
 from urllib.parse import unquote
-import os
-import subprocess
 from pprint import pprint
+import requests
+from playwright.sync_api import sync_playwright, TimeoutError, Error
+
+# Global Variable
+legislature = 16
 
 # create a database connection
 engine = sqlalchemy.create_engine('sqlite:///parlements.db')
@@ -36,41 +39,55 @@ def parse(url):
     list = soup.find_all("div", attrs={"data-organe-id" : re.compile(r".*")})
 
     for groupe in list:
-        nom = groupe.find("span").text
-        url_groupe = "https://www2.assemblee-nationale.fr/instances/fiche/OMC_" + groupe["data-organe-id"] + "/null/ajax/1/name/Composition/legislature/17"
-        parse_groupes(url_groupe, nom)
+        url_groupe = groupe.find("a")["href"]
+        parse_groupes(url_groupe, groupe["data-organe-id"])
 
-#TODO sort db data and website data?
-def parse_groupes(url, nom):
-    command = 'curl "' + url + '"'
-    response = subprocess.check_output(command, shell=True)
-    soup = BeautifulSoup(response, 'html.parser')
-    list = soup.find_all("h3")
-    nom = nom
-    today = date.today()
-    legislature = url.split("/")[-1]
-    groupe_id = url.split("_")[-1].split("/")[0]
-    president = []
-    membres = []
-    apparentes = []
-    for status in list:
-        poste = status.text
-        if re.match(r"^Président", poste):
-            deputes = status.find_next("ul").find_all("a", {"class": "instance-composition-nom"})
-            for depute in deputes:
-                president.append(depute["href"].split("_")[-1])
-        if poste == "Membres" or poste == "Députés non-inscrits":
-            deputes = status.find_next("ul").find_all("a", {"class": "instance-composition-nom"})
-            for depute in deputes:
-                membres.append(depute["href"].split("_")[-1])
-        if re.match(r"^Apparent", poste):
-            deputes = status.find_next("ul").find_all("a", {"class": "instance-composition-nom"})
-            for depute in deputes:
-                apparentes.append(depute["href"].split("_")[-1])
+# TODO playwright retries when timeout or errors
+def parse_groupes(url, groupe_id):
+    # Initialize Playwright
+    with sync_playwright() as p:
+        # Launch the browser
+        browser = p.chromium.launch()
+        # Create a new page
+        page = browser.new_page()
+        page.goto(url)
+        # Wait for the AJAX content to load
+        page.wait_for_selector('#instance-composition-list')
+        # Get the page content
+        page_content = page.content()
+        soup = BeautifulSoup(page_content, 'html.parser')
+        
+        list = soup.find_all("h3")
+        nom = soup.find("h1").text
+        today = date.today()
+        groupe_id = groupe_id
+        president = []
+        membres = []
+        apparentes = []
+        for status in list:
+            poste = status.text
+            if re.match(r"^Président", poste):
+                deputes = status.find_next("ul").find_all("a", {"class": "instance-composition-nom"})
+                for depute in deputes:
+                    president.append(depute["href"].split("_")[-1])
+            if poste == "Membres" or poste == "Députés non-inscrits":
+                deputes = status.find_next("ul").find_all("a", {"class": "instance-composition-nom"})
+                for depute in deputes:
+                    membres.append(depute["href"].split("_")[-1])
+            if re.match(r"^Apparent", poste):
+                deputes = status.find_next("ul").find_all("a", {"class": "instance-composition-nom"})
+                for depute in deputes:
+                    apparentes.append(depute["href"].split("_")[-1])
+            if re.match(r"^Députés", poste):
+                membres = status.find_next("ul").find_all("a", {"class": "instance-composition-nom"})
+                for depute in deputes:
+                    membres.append(depute["href"].split("_")[-1])
+        
+        browser.close()
     
-    results = check_db(nom, legislature, groupe_id)
+    results = check_db(legislature, groupe_id)
     
-    if results[0] == ', '.join(map(str, president)) and results[1] == ', '.join(map(str, membres)) and results[2] == ', '.join(map(str, apparentes)):
+    if results and results[0] == ','.join(map(str, president)) and results[1] == ','.join(map(str, membres)) and results[2] == ','.join(map(str, apparentes)):
         return
 
     session = Session()
@@ -87,7 +104,7 @@ def parse_groupes(url, nom):
     session.commit()
     session.close()
 
-def check_db(nom, legislature, groupe_id):
+def check_db(legislature, groupe_id):
     session = Session()
     # Define the query
     stmt = (
