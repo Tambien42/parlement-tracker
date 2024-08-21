@@ -11,7 +11,7 @@ import requests
 from playwright.sync_api import sync_playwright, TimeoutError, Error
 
 # Global Variable
-legislature = 16
+legislature = 17
 
 # create a database connection
 engine = sqlalchemy.create_engine('sqlite:///parlements.db')
