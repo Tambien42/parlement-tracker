@@ -78,15 +78,15 @@ def parse_groupes(url, groupe_id):
                 deputes = status.find_next("ul").find_all("a", {"class": "instance-composition-nom"})
                 for depute in deputes:
                     apparentes.append(depute["href"].split("_")[-1])
-            if re.match(r"^Députés", poste):
-                membres = status.find_next("ul").find_all("a", {"class": "instance-composition-nom"})
-                for depute in deputes:
-                    membres.append(depute["href"].split("_")[-1])
+            # if re.match(r"^Députés", poste):
+            #     deputes = status.find_next("ul").find_all("a", {"class": "instance-composition-nom"})
+            #     for depute in deputes:
+            #         membres.append(depute["href"].split("_")[-1])
         
         browser.close()
     
     results = check_db(legislature, groupe_id)
-    
+
     if results and results[0] == ','.join(map(str, president)) and results[1] == ','.join(map(str, membres)) and results[2] == ','.join(map(str, apparentes)):
         return
 
