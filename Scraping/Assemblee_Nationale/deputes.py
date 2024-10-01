@@ -12,7 +12,7 @@ from urllib.parse import urlparse, parse_qs
 import requests
 
 # Global variable
-legislature = 17
+legislature = 15
 
 # create a database connection
 engine = sqlalchemy.create_engine('sqlite:///parlements.db')
@@ -98,7 +98,7 @@ def parse(url):
 
     # Convert to a set to remove duplicates
     results = set(db)
-    #pprint(results)
+
     for depute in results:
         # vote en congrès skip les sénateurs
         if re.match(r"^PA\d+", depute) == None:
@@ -184,8 +184,8 @@ def parse_depute(url):
     photo_url = soup.find("div", {"class": "acteur-photo-image"}).find("img")["src"]
     folder = "../images/"
     ext = photo_url.split("/")[-1].split(".")
-    photo = "PA"  + ext[0] +  "-" + str(legislature) + ext[-1]
-    photo_path = os.path.abspath(folder) + photo
+    photo = "PA"  + ext[0] +  "-" + str(legislature) + '.' + ext[-1]
+    #photo_path = os.path.abspath(folder) + photo
     download_image(photo_url, folder, photo)
 
     # Parse the URL to obtain the query component
@@ -211,6 +211,7 @@ def parse_depute(url):
     date = soupe.find("li", {"class": "togglable-box"}).find("ul").find("sup").parent.text
     date_pattern = r'(?:\d{1,2}|1er) [a-zA-Zéû]+ \d{4}'
     dates = re.findall(date_pattern, date)
+
     # Replace French names with English names
     for french, english in french_to_english.items():
         dates[0] = dates[0].replace(french, english)
@@ -227,7 +228,7 @@ def parse_depute(url):
         depute_id=depute_id,
         nom=nom,
         legislature=legislature,
-        photo=photo_path,
+        photo=photo,
         profession=profession,
         date_naissance=date_naissance,
         date_election=date_election,
@@ -376,12 +377,14 @@ def get_all_deputes(legislature):
 def main():
     #Create the table in the database
     Base.metadata.create_all(engine)
-    #Start URL
-    url = "https://www2.assemblee-nationale.fr/deputes/liste/alphabetique"
-    parse(url)
-    # get fonctions du bureau de l'an
-    url = "https://www2.assemblee-nationale.fr/layout/set/ajax/content/view/embed/189123undefined"
-    parse_fonctions(url)
+    # #Start URL
+    # url = "https://www2.assemblee-nationale.fr/deputes/liste/alphabetique"
+    # parse(url)
+    # # get fonctions du bureau de l'an
+    # url = "https://www2.assemblee-nationale.fr/layout/set/ajax/content/view/embed/189123undefined"
+    # parse_fonctions(url)
+    url = "https://www.assemblee-nationale.fr/dyn/deputes/PA332747"
+    parse_depute(url)
 
 if __name__ == "__main__":
     main()
