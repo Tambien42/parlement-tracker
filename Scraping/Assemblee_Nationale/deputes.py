@@ -104,7 +104,9 @@ def parse_depute(url):
     soup = BeautifulSoup(response, 'html.parser')
     mandat = soup.find("span", {"class": "_colored _bold _big"}).text.split("|")[-1].strip()
     depute_id = url.split("/")[-1]
-    groupe = soup.find("a", {"class": "h4"}).text.strip()
+    groupe = soup.find("a", {"class": "h4"})["href"].split("/")[-1]
+    if soup.find("a", {"class": "h4"})["href"].split("/")[-1].split("?"):
+        groupe = soup.find("a", {"class": "h4"})["href"].split("/")[-1].split("?")[0]
 
     name = soup.find("h1").text.split()
     # Remove the first word
