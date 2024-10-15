@@ -142,11 +142,12 @@ def parse(url):
 
     #sessionp = session.text.strip()
     liste = soup.find_all("p", {"class": "my-2"})
+    sessionp = soup.find("h1").split(" ")[-1].strip()
     for scrutin in liste:
         numero = extract_number(scrutin.find("a").text.strip())
-        # if check_db(sessionp, numero) == True:
-        #         print("already in db")
-        #         return
+        if check_db(sessionp, numero) == True:
+                print("already in db")
+                return
         url = "https://www.senat.fr/scrutin-public/" + scrutin.find("a")["href"]
         parse_vote(url)
 
