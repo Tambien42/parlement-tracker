@@ -411,9 +411,9 @@ def parse_senateur(url):
 def main():
     # Start URL
     # senateurs actuels
-    #url = "https://www.senat.fr/senateurs/senatl.html"
+    url = "https://www.senat.fr/senateurs/senatl.html"
     # tous les anciens sénateurs
-    url = "https://www.senat.fr/anciens-senateurs-5eme-republique/senatl.html"
+    #url = "https://www.senat.fr/anciens-senateurs-5eme-republique/senatl.html"
     parse(url)
 
 if __name__ == "__main__":
