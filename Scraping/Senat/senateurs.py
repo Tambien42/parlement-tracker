@@ -238,6 +238,13 @@ def fetch_url(url, retries=10, timeout=30.0):
     print(f"Failed to fetch {url} after {retries} attempts.")
     return None
 
+def get_all_current_senateurs():
+    with Session() as session:
+        stmt = select(Senateurs.senateur_id).where(Senateurs.date_fin_mandat == None)
+        results = session.scalars(stmt).all()
+        return results
+
+# TODO symmetric_difference
 def parse(url):
     response = fetch_url(url)
     soup = BeautifulSoup(response, 'html.parser')
@@ -248,6 +255,7 @@ def parse(url):
         url = "https://www.senat.fr" + a["href"]
         parse_senateur(url)
 
+# TODO fix en_cours
 def parse_senateur(url):
     response = fetch_url(url)
     soup = BeautifulSoup(response, 'html.parser')
@@ -326,9 +334,10 @@ def parse_senateur(url):
     
 
         elections = soup.find("div", {"id": "accordion-collapse-1"}).find("p").decode_contents().split('<br/>')
+    
     for current_item, next_item in itertools.zip_longest(elections, elections[1:]):
         en_cours = 1
-        if re.match(r"^Fin", current_item) or current_item.replace("\n", "") == "":
+        if re.match(r"^Fin", current_item.replace("\n", "")) or current_item.replace("\n", "") == "":
             break
 
         date_election = None
@@ -371,7 +380,6 @@ def parse_senateur(url):
         
         #print(f"en cours: {en_cours} - date election: {date_election}, raison debut: {raison_debut} - date fin: {date_fin}, raison fin: {raison_fin}")
 
-        # TODO check if already in db
         senateur = session.query(Senateurs).filter(Senateurs.senateur_id == senateur_id, Senateurs.date_election == date_election).first()
         if senateur:
             if senateur.date_fin_mandat != date_fin:
@@ -415,6 +423,7 @@ def main():
     # tous les anciens sénateurs
     #url = "https://www.senat.fr/anciens-senateurs-5eme-republique/senatl.html"
     parse(url)
+    #print(len(get_all_current_senateurs()))
 
 if __name__ == "__main__":
     main()
