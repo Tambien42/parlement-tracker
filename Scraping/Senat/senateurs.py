@@ -255,7 +255,6 @@ def parse(url):
         url = "https://www.senat.fr" + a["href"]
         parse_senateur(url)
 
-# TODO fix en_cours
 def parse_senateur(url):
     response = fetch_url(url)
     soup = BeautifulSoup(response, 'html.parser')
@@ -391,7 +390,6 @@ def parse_senateur(url):
             session.commit()
             print("Senateur data updated successfully.")
             return
-        # if senateur_id == and if date_election == and date_fin != -> write in db
 
         # Store data in the database
         senateur = Senateurs(
