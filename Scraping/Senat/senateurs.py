@@ -240,19 +240,29 @@ def fetch_url(url, retries=10, timeout=30.0):
 
 def get_all_current_senateurs():
     with Session() as session:
-        stmt = select(Senateurs.senateur_id).where(Senateurs.date_fin_mandat == None)
+        stmt = select(Senateurs.photo).where(Senateurs.date_fin_mandat == None)
         results = session.scalars(stmt).all()
         return results
 
-# TODO symmetric_difference
 def parse(url):
     response = fetch_url(url)
     soup = BeautifulSoup(response, 'html.parser')
 
     liste = soup.find("div", {"class": "page-content"}).find("div", {"class": "col-md-8"}).find_all("a", href=True)
 
+    db_list = get_all_current_senateurs()
+    senateurs_db = []
+    if len(db_list):
+        # Remove "_carre.jpg" from every item in the list
+        senateurs_db = [filename.replace("_carre.jpg", "") for filename in db_list]
+
+    site_liste = []
     for a in liste:
-        url = "https://www.senat.fr" + a["href"]
+        site_liste.append(a['href'].split("/")[-1].split(".")[0])
+
+    senateurs = list(set(senateurs_db).symmetric_difference(set(site_liste)))
+    for senateur in senateurs:
+        url = "https://www.senat.fr/senateur/" + senateur + ".html"
         parse_senateur(url)
 
 def parse_senateur(url):
@@ -270,11 +280,11 @@ def parse_senateur(url):
     nom = ' '.join(remaining_words)
     print(f"Name: {nom}, id: {senateur_id}")
 
-    photo_url = soup.find("header", {"class": "page-header"}).find("img")["src"]
+    photo_url = "https://www.senat.fr" + soup.find("header", {"class": "page-header"}).find("img")["src"]
     folder = "../images/senat/"
     photo = photo_url.split("/")[-1]
-    # if download_image(photo_url, folder, photo) == 0:
-    #     photo = ""
+    if download_image(photo_url, folder, photo) == 0:
+        photo = ""
 
     profession = ""
     if soup.find("dt", text=re.compile("Profession :")):
@@ -345,8 +355,11 @@ def parse_senateur(url):
         raison_fin = ""
         # Regular expression pattern to match the dates and parenthesis
         pattern = r'(\d{1,2}(?:er)?\s+\w+\s+\d{4})(?:\s*\((.*?)\))?'
+        #pattern = r'(\d{1,2}(?:er)?\s+\w+\s+\d{4})(?![^\(]*\))'
+        pattern = r'(\d{1,2}(?:er)?\s+\w+\s+\d{4})(?:\s*\(([^()]*?)\))?'
         # Find all matches
         matches = re.findall(pattern, current_item)
+        print(matches)
         date_election = format_date(matches[0][0])
         raison_debut = matches[0][1].strip()
         if raison_debut == "":
@@ -421,7 +434,6 @@ def main():
     # tous les anciens sénateurs
     #url = "https://www.senat.fr/anciens-senateurs-5eme-republique/senatl.html"
     parse(url)
-    #print(len(get_all_current_senateurs()))
 
 if __name__ == "__main__":
     main()
