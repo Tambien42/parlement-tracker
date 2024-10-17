@@ -244,6 +244,22 @@ def get_all_current_senateurs():
         results = session.scalars(stmt).all()
         return results
 
+def group_change():
+    with Session() as session:
+        stmt = select(Senateurs).where(Senateurs.en_cours == 1)
+        results = session.scalars(stmt).all()
+        for senateur in results:
+            print(senateur.nom)
+            url = "https://www2.assemblee-nationale.fr/dyn/deputes/" + senateur.depute_id
+            content = fetch_url(url)
+            soup = BeautifulSoup(content, 'html.parser')
+
+            groupe_id = soup.find("div", {"class": "page-content"}).find("dl").find_all("a", href=re.compile(r"^/senateurs/"))[-1]["href"].split(".")[0].split("/")[-1]
+            if senateur.groupe != groupe_id:
+                senateur.groupe = groupe_id
+                print("Modifying Groupe")
+                session.commit()
+
 def parse(url):
     response = fetch_url(url)
     soup = BeautifulSoup(response, 'html.parser')
@@ -325,12 +341,13 @@ def parse_senateur(url):
             circonscription = circonscription.strip().replace(dpt, number)
         numero_siege = soup.find("hemicycle-seat")["seat"]
         #groupe = soup.find("img", src=re.compile(r'^/assets/images/partagees/groupes/'))["alt"]
-        group = soup.find("div", {"class": "page-content"}).find("dl").find_all("a", href=re.compile(r"^/senateurs/"))[-1].text.split()
-        if group[0] == "groupe":
-            remaining_words = group[1:]
-        if group[1] == "du":
-            remaining_words = group[2:]
-        groupe = ' '.join(remaining_words)
+        # TODO groupe id or groupe name ?
+        # group = soup.find("div", {"class": "page-content"}).find("dl").find_all("a", href=re.compile(r"^/senateurs/"))[-1].text.split()
+        # if group[0] == "groupe":
+        #     remaining_words = group[1:]
+        # if group[1] == "du":
+        #     remaining_words = group[2:]
+        # groupe = ' '.join(remaining_words)
         groupe_id = soup.find("div", {"class": "page-content"}).find("dl").find_all("a", href=re.compile(r"^/senateurs/"))[-1]["href"].split(".")[0].split("/")[-1]
         mail = ""
         if soup.find("div", {"class": "page-content"}).find("dl").find("a", href=re.compile(r"^mailto:")):
@@ -418,7 +435,7 @@ def parse_senateur(url):
             raison_fin=raison_fin,
             circonscription=circonscription,
             numero_siege=numero_siege,
-            groupe=groupe,
+            groupe=groupe_id,
             mail=mail,
             twitter=twitter
         )
@@ -434,6 +451,8 @@ def main():
     # tous les anciens sénateurs
     #url = "https://www.senat.fr/anciens-senateurs-5eme-republique/senatl.html"
     parse(url)
+    # Check if senateur change groupe
+    group_change()
 
 if __name__ == "__main__":
     main()
