@@ -12,7 +12,7 @@ from urllib.parse import urlparse, parse_qs
 import requests
 from playwright.sync_api import sync_playwright, TimeoutError, Error
 
-legislature = 15
+legislature = 17
 # Global variable
 # legislature = 11
 # url_fonctions = "https://www.assemblee-nationale.fr/11/tribun/xml/bureau_assemblee.asp"
@@ -169,7 +169,7 @@ def parse_fonctions(url):
 def main():
     #Create the table in the database
     Base.metadata.create_all(engine)
-    # # get fonctions du bureau de l'an
+    # get fonctions du bureau de l'an
     url  = "https://www2.assemblee-nationale.fr/" + str(legislature) + "/le-bureau-de-l-assemblee-nationale"
     parse_fonctions(url)
     #parse_fonctions(url_fonctions)
