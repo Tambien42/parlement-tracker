@@ -8,6 +8,7 @@ import re
 import os
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker, declarative_base, Mapped, mapped_column
+from pprint import pprint
 
 # Global variable
 legislature = 17
@@ -306,7 +307,11 @@ def parse(url):
     """
     content = fetch_url(url)
     soup = BeautifulSoup(content, 'html.parser')
-    liste = soup.find("div", {"id": "deputes-list"}).find_all("li")
+    liste = []
+    if soup.find("div", {"id": "deputes-list"}):
+        liste = soup.find("div", {"id": "deputes-list"}).find_all("li")
+    if soup.find("div", {"id": "DataTables_Table_0_wrapper"}):
+        liste = soup.find("div", {"id": "DataTables_Table_0_wrapper"}).find_all("tr")
 
     db_liste = get_all_current_deputes()
 
@@ -326,6 +331,18 @@ def parse(url):
     for depute in deputes:
         depute_url = "https://www2.assemblee-nationale.fr/dyn/deputes/" + depute
         parse_depute(depute_url)
+
+def parse_clos(url):
+    content = fetch_url(url)
+    soup = BeautifulSoup(content, 'html.parser')
+
+    liste = []
+    if soup.find("tbody"):
+        liste = soup.find("tbody").find_all("a")
+        
+    for depute in liste:
+        depute_url = "https://www2.assemblee-nationale.fr/dyn/deputes/" + depute["href"].split("_")[-1]
+        parse_old_mandat_clos(depute_url)
 
 def parse_depute(url):
     """
@@ -585,6 +602,9 @@ def main():
     # Example URL (replace with target URL)
     url = "https://www2.assemblee-nationale.fr/deputes/liste/alphabetique"
     parse(url)
+    # liste mandat clos
+    url = "https://www2.assemblee-nationale.fr/deputes/liste/clos"
+    parse_clos(url)
     # Check if depute changed group
     group_change()
 
