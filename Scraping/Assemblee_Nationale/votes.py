@@ -140,7 +140,7 @@ def main():
     #Create the table in the database
     Base.metadata.create_all(engine)
     #Start URL
-    url = "https://www.assemblee-nationale.fr/dyn/16/scrutins"
+    url = "https://www.assemblee-nationale.fr/dyn/17/scrutins"
     parse(url)
 
 if __name__ == "__main__":
