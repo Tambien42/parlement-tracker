@@ -57,29 +57,30 @@ def calcul_pourcentage_vote():
         #print(f"nom: {depute.nom}, id: {depute.id}, legislature: {depute.legislature}, date_debut_mandat: {depute.date_debut_mandat}, date_fin: {depute.date_fin_mandat}")
         numerateur = get_number_votes_depute(depute.depute_id, depute.legislature)
         denominateur = scrutins_numbers(depute.legislature, depute.date_debut_mandat, depute.date_fin_mandat)
-        pourcentage = 0
+        pourcentage_vote = 0
         if numerateur != 0 or denominateur != 0:
-            pourcentage = round(numerateur / denominateur * 100, 2)
+            pourcentage_vote = round(numerateur / denominateur * 100, 2)
 
-        print(f"{depute.nom} : {pourcentage}%")
+        print(f"{depute.nom} : {pourcentage_vote}%")
+
         session = Session() 
         db = session.query(Pourcentages_deputesAN).filter(Pourcentages_deputesAN.depute_id == depute.depute_id and Pourcentages_deputesAN.date_debut_mandat == depute.date_debut_mandat).first()
         if db:
+            db.vote = pourcentage_vote
+            session.commit()
             continue
 
         # Store data in the database
         depute = Pourcentages_deputesAN(
             depute_id=depute.depute_id,
             legislature=legislature,
-            vote=pourcentage,
+            vote=pourcentage_vote,
             date_debut_mandat=depute.date_debut_mandat
         )
         
         session.add(depute)  # Use merge to update or insert
         session.commit()
         session.close() 
-
-# TODO Pourcentage groupes
 
 def main():
     calcul_pourcentage_vote()
