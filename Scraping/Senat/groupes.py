@@ -19,8 +19,8 @@ engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 session = Session()
 
-class Groupes_Senat(Base):
-    __tablename__ = 'groupes_senat'
+class S_Groupes(Base):
+    __tablename__ = 'S_groupes'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     session: Mapped[str]
@@ -30,7 +30,7 @@ class Groupes_Senat(Base):
     membres: Mapped[str]
 
     def __repr__(self):
-        return f"<Groupes(id={self.id}, session={self.session}, nom={self.nom})>"
+        return f"<S_Groupes(id={self.id}, session={self.session}, nom={self.nom})>"
 
 Base.metadata.create_all(engine)
 
@@ -56,10 +56,10 @@ def check_db(sessionp, groupe_id):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Groupes_Senat.membres)
-        .where(Groupes_Senat.session == sessionp)
-        .where(Groupes_Senat.groupe_id == groupe_id)
-        .order_by(Groupes_Senat.date.desc())
+        sqlalchemy.select(S_Groupes.membres)
+        .where(S_Groupes.session == sessionp)
+        .where(S_Groupes.groupe_id == groupe_id)
+        .order_by(S_Groupes.date.desc())
     )
     # Execute the query
     results = session.execute(stmt).fetchall()
@@ -112,7 +112,7 @@ def parse_groupe(url):
         return
 
     session = Session()
-    groupe = Groupes_Senat(
+    groupe = S_Groupes(
         nom=nom,
         groupe_id=groupe_id,
         session=sessionp,

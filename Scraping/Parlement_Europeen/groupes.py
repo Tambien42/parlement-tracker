@@ -18,8 +18,8 @@ engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 session = Session()
 
-class GroupesEuro(Base):
-    __tablename__ = 'groupes_europeens'
+class EU_groupes(Base):
+    __tablename__ = 'EU_groupes'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     groupe_id: Mapped[str]
@@ -117,7 +117,7 @@ def parse_groupe(url):
             if id_num == groupe_id:
                 abbreviation = r["data-th"].split(":")[0].strip()
 
-    groupe_euro = session.query(GroupesEuro).filter(GroupesEuro.groupe_id == groupe_id, GroupesEuro.legislature == legislature).first()
+    groupe_euro = session.query(EU_groupes).filter(EU_groupes.groupe_id == groupe_id, EU_groupes.legislature == legislature).first()
     if groupe_euro:
         print(f"No changes in {nom}.")
         return
@@ -125,7 +125,7 @@ def parse_groupe(url):
     print("-------------------------------------------")
     print(f"{groupe_id} {nom} {abbreviation} {members}")
     
-    groupe = GroupesEuro(
+    groupe = EU_groupes(
         nom=nom,
         groupe_id=groupe_id,
         abbreviation=abbreviation,

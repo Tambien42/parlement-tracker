@@ -50,8 +50,8 @@ engine = sqlalchemy.create_engine('sqlite:///parlements.db')
 Session = sessionmaker(bind=engine)
 Base = declarative_base()
 
-class Scrutins(Base):
-    __tablename__ = 'scrutins'
+class AN_Scrutins(Base):
+    __tablename__ = 'AN_scrutins'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     legislature: Mapped[int]
@@ -65,7 +65,7 @@ class Scrutins(Base):
     non_votants: Mapped[int]
 
     def __repr__(self):
-        return f"<Scrutins(id={self.id}, legislature={self.legislature}, numero={self.numero})>"
+        return f"<AN_Scrutins(id={self.id}, legislature={self.legislature}, numero={self.numero})>"
 
 def parse(url):
     while True:
@@ -130,7 +130,7 @@ def parse_scrutin(url):
     
     # open a new database session
     session = Session()
-    scrutin = Scrutins(
+    scrutin = AN_Scrutins(
         numero=numero,
         legislature=legislature,
         titre=titre,
@@ -168,9 +168,9 @@ def check_db(legislature, numero):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Scrutins.numero)
-        .where(Scrutins.legislature == legislature)
-        .where(Scrutins.numero == numero)
+        sqlalchemy.select(AN_Scrutins.numero)
+        .where(AN_Scrutins.legislature == legislature)
+        .where(AN_Scrutins.numero == numero)
     )
     # Execute the query
     results = session.execute(stmt).scalars().all()
@@ -183,9 +183,9 @@ def get_date(legislature, numero):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Scrutins.date_seance)
-        .where(Scrutins.legislature == legislature)
-        .where(Scrutins.numero == numero)
+        sqlalchemy.select(AN_Scrutins.date_seance)
+        .where(AN_Scrutins.legislature == legislature)
+        .where(AN_Scrutins.numero == numero)
     )
 
     last = 0
@@ -200,9 +200,9 @@ def get_last_scrutin(legislature):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Scrutins.numero)
-        .where(Scrutins.legislature == legislature)
-        .order_by(Scrutins.numero.desc())
+        sqlalchemy.select(AN_Scrutins.numero)
+        .where(AN_Scrutins.legislature == legislature)
+        .order_by(AN_Scrutins.numero.desc())
     )
 
     last = 0

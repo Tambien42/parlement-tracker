@@ -18,8 +18,8 @@ engine = sqlalchemy.create_engine('sqlite:///parlements.db')
 Session = sessionmaker(bind=engine)
 Base = declarative_base()
 
-class Groupes(Base):
-    __tablename__ = 'groupes'
+class AN_Groupes(Base):
+    __tablename__ = 'AN_groupes'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     legislature: Mapped[int]
@@ -31,7 +31,7 @@ class Groupes(Base):
     apparentes: Mapped[str]
 
     def __repr__(self):
-        return f"<Groupes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
+        return f"<AN_Groupes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
 
 def parse(url):
     response = fetch_url(url)
@@ -91,7 +91,7 @@ def parse_groupes(url, groupe_id):
         return
 
     session = Session()
-    groupe = Groupes(
+    groupe = AN_Groupes(
         nom=nom,
         groupe_id=groupe_id,
         legislature=legislature,
@@ -108,10 +108,10 @@ def check_db(legislature, groupe_id):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Groupes.president, Groupes.membres, Groupes.apparentes)
-        .where(Groupes.legislature == legislature)
-        .where(Groupes.groupe_id == groupe_id)
-        .order_by(Groupes.date.desc())
+        sqlalchemy.select(AN_Groupes.president, AN_Groupes.membres, AN_Groupes.apparentes)
+        .where(AN_Groupes.legislature == legislature)
+        .where(AN_Groupes.groupe_id == groupe_id)
+        .order_by(AN_Groupes.date.desc())
     )
     # Execute the query
     results = session.execute(stmt).fetchall()
@@ -143,9 +143,9 @@ def get_president(nom):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Groupes.president)
-        .where(Groupes.nom == nom)
-        .order_by(Groupes.date.desc())
+        sqlalchemy.select(AN_Groupes.president)
+        .where(AN_Groupes.nom == nom)
+        .order_by(AN_Groupes.date.desc())
     )
     # Execute the query
     results = session.execute(stmt).scalars().all()
@@ -158,9 +158,9 @@ def get_membres(nom):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Groupes.membres)
-        .where(Groupes.nom == nom)
-        .order_by(Groupes.date.desc())
+        sqlalchemy.select(AN_Groupes.membres)
+        .where(AN_Groupes.nom == nom)
+        .order_by(AN_Groupes.date.desc())
     )
     # Execute the query
     results = session.execute(stmt).scalars().all()
@@ -173,9 +173,9 @@ def get_affilies(nom):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Groupes.affilies)
-        .where(Groupes.nom == nom)
-        .order_by(Groupes.date.desc())
+        sqlalchemy.select(AN_Groupes.affilies)
+        .where(AN_Groupes.nom == nom)
+        .order_by(AN_Groupes.date.desc())
     )
     # Execute the query
     results = session.execute(stmt).scalars().all()

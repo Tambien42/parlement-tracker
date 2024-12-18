@@ -35,8 +35,8 @@ engine = sqlalchemy.create_engine('sqlite:///parlements.db')
 Session = sessionmaker(bind=engine)
 Base = declarative_base()
 
-class FonctionsAN(Base):
-    __tablename__ = 'fonctions_an'
+class AN_Fonctions(Base):
+    __tablename__ = 'AN_fonctions'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     legislature: Mapped[int]
@@ -47,7 +47,7 @@ class FonctionsAN(Base):
     date: Mapped[datetime]
 
     def __repr__(self):
-        return f"<FonctionsAN(id={self.id}, legislature={self.legislature}, president={self.president})>"
+        return f"<AN_Fonctions(id={self.id}, legislature={self.legislature}, president={self.president})>"
 
 # Mapping French day and month names to English
 french_to_english = {
@@ -92,9 +92,9 @@ def check_fonctions(legislature):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(FonctionsAN.president, FonctionsAN.vice_presidents, FonctionsAN.questeurs, FonctionsAN.secretaires)
-        .where(FonctionsAN.legislature == legislature)
-        .order_by(FonctionsAN.date.desc())
+        sqlalchemy.select(AN_Fonctions.president, AN_Fonctions.vice_presidents, AN_Fonctions.questeurs, AN_Fonctions.secretaires)
+        .where(AN_Fonctions.legislature == legislature)
+        .order_by(AN_Fonctions.date.desc())
     )
     # Execute the query
     results = session.execute(stmt).fetchall()
@@ -151,7 +151,7 @@ def parse_fonctions(url):
 
         # # open a new database session
         session = Session()
-        depute = FonctionsAN(
+        depute = AN_Fonctions(
             legislature=legislature,
             president=','.join(map(str, president)),
             vice_presidents=','.join(map(str, vicep)),

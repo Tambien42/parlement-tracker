@@ -16,8 +16,8 @@ engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 session = Session()
 
-class Scrutins_Senat(Base):
-    __tablename__ = 'scrutins_senat'
+class S_Scrutins(Base):
+    __tablename__ = 'S_scrutins'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     session: Mapped[str]
@@ -31,7 +31,7 @@ class Scrutins_Senat(Base):
     non_votants: Mapped[int]
 
     def __repr__(self):
-        return f"<Scrutins(id={self.id}, session={self.session}, numero={self.numero})>"
+        return f"<S_Scrutins(id={self.id}, session={self.session}, numero={self.numero})>"
 
 Base.metadata.create_all(engine)
 
@@ -78,9 +78,9 @@ def check_db(sessionp, numero):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Scrutins_Senat.numero)
-        .where(Scrutins_Senat.session == sessionp)
-        .where(Scrutins_Senat.numero == numero)
+        sqlalchemy.select(S_Scrutins.numero)
+        .where(S_Scrutins.session == sessionp)
+        .where(S_Scrutins.numero == numero)
     )
     # Execute the query
     results = session.execute(stmt).scalars().all()
@@ -176,7 +176,7 @@ def parse_scrutin(url):
     print(f"numero: {numero}, session: {sessionp}, date: {date}, pour:{votes_pour}, contre: {votes_contre}, abstention: {votes_abstention}, non-votants: {non_votants}")
 
     # open a new database session
-    scrutin = Scrutins_Senat(
+    scrutin = S_Scrutins(
         numero=numero,
         session=sessionp,
         titre=titre,

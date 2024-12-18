@@ -18,8 +18,8 @@ engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 session = Session()
 
-class Votes_Senat(Base):
-    __tablename__ = 'votes_senat'
+class S_Votes(Base):
+    __tablename__ = 'S_votes'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     numero: Mapped[str]
@@ -27,7 +27,7 @@ class Votes_Senat(Base):
     votes: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     def __repr__(self):
-        return f"<Votes(id={self.id}, session={self.session}, numero={self.numero})>"
+        return f"<S_Votes(id={self.id}, session={self.session}, numero={self.numero})>"
 
 Base.metadata.create_all(engine)
 
@@ -96,9 +96,9 @@ def check_db(sessionp, numero):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Votes_Senat.numero)
-        .where(Votes_Senat.session == sessionp)
-        .where(Votes_Senat.numero == numero)
+        sqlalchemy.select(S_Votes.numero)
+        .where(S_Votes.session == sessionp)
+        .where(S_Votes.numero == numero)
     )
     # Execute the query
     results = session.execute(stmt).scalars().all()
@@ -190,7 +190,7 @@ def parse_vote(url):
                         break
     
     # open a new database session
-    vote = Votes_Senat(
+    vote = S_Votes(
         numero=numero,
         session=sessionp,
         votes=data

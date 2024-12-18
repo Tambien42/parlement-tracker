@@ -10,8 +10,8 @@ engine = sqlalchemy.create_engine('sqlite:///parlements.db')
 Session = sessionmaker(bind=engine)
 Base = declarative_base()
 
-class Commissions(Base):
-    __tablename__ = 'commissions'
+class AN_Commissions(Base):
+    __tablename__ = 'AN_commissions'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     legislature: Mapped[int]
@@ -23,7 +23,7 @@ class Commissions(Base):
     rapporteurs = Mapped[str]
 
     def __repr__(self):
-        return f"<Groupes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
+        return f"<AN_Commissions(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
 
 def parse(url):
     pass
@@ -35,9 +35,9 @@ def get_president(nom):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Commissions.president)
-        .where(Commissions.nom == nom)
-        .order_by(Commissions.date.desc())
+        sqlalchemy.select(AN_Commissions.president)
+        .where(AN_Commissions.nom == nom)
+        .order_by(AN_Commissions.date.desc())
     )
     # Execute the query
     results = session.execute(stmt).scalars().all()
@@ -50,9 +50,9 @@ def get_membres(nom):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Commissions.membres)
-        .where(Commissions.nom == nom)
-        .order_by(Commissions.date.desc())
+        sqlalchemy.select(AN_Commissions.membres)
+        .where(AN_Commissions.nom == nom)
+        .order_by(AN_Commissions.date.desc())
     )
     # Execute the query
     results = session.execute(stmt).scalars().all()
@@ -65,9 +65,9 @@ def get_secretaires(nom):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Commissions.secretaires)
-        .where(Commissions.nom == nom)
-        .order_by(Commissions.date.desc())
+        sqlalchemy.select(AN_Commissions.secretaires)
+        .where(AN_Commissions.nom == nom)
+        .order_by(AN_Commissions.date.desc())
     )
     # Execute the query
     results = session.execute(stmt).scalars().all()
@@ -80,9 +80,9 @@ def get_rapporteurs(nom):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Commissions.rapporteurs)
-        .where(Commissions.nom == nom)
-        .order_by(Commissions.date.desc())
+        sqlalchemy.select(AN_Commissions.rapporteurs)
+        .where(AN_Commissions.nom == nom)
+        .order_by(AN_Commissions.date.desc())
     )
     # Execute the query
     results = session.execute(stmt).scalars().all()

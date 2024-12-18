@@ -18,8 +18,8 @@ engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 session = Session()
 
-class Senateurs(Base):
-    __tablename__ = 'senateurs'
+class S_Senateurs(Base):
+    __tablename__ = 'S_senateurs'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     senateur_id: Mapped[str]
@@ -39,7 +39,7 @@ class Senateurs(Base):
     twitter: Mapped[str] = mapped_column(nullable=True)
 
     def __repr__(self):
-        return f"<Deputes(id={self.id}, nom={self.nom})>"
+        return f"<S_Senateurs(id={self.id}, nom={self.nom})>"
 
 Base.metadata.create_all(engine)
 
@@ -240,13 +240,13 @@ def fetch_url(url, retries=10, timeout=30.0):
 
 def get_all_current_senateurs():
     with Session() as session:
-        stmt = select(Senateurs.photo).where(Senateurs.date_fin_mandat == None)
+        stmt = select(S_Senateurs.photo).where(S_Senateurs.date_fin_mandat == None)
         results = session.scalars(stmt).all()
         return results
 
 def group_change():
     with Session() as session:
-        stmt = select(Senateurs).where(Senateurs.en_cours == 1)
+        stmt = select(S_Senateurs).where(S_Senateurs.en_cours == 1)
         results = session.scalars(stmt).all()
         for senateur in results:
             print(senateur.nom)
@@ -409,7 +409,7 @@ def parse_senateur(url):
         
         #print(f"en cours: {en_cours} - date election: {date_election}, raison debut: {raison_debut} - date fin: {date_fin}, raison fin: {raison_fin}")
 
-        senateur = session.query(Senateurs).filter(Senateurs.senateur_id == senateur_id, Senateurs.date_election == date_election).first()
+        senateur = session.query(S_Senateurs).filter(S_Senateurs.senateur_id == senateur_id, S_Senateurs.date_election == date_election).first()
         if senateur:
             if senateur.date_fin_mandat != date_fin:
                 senateur.date_fin_mandat = date_fin
@@ -422,7 +422,7 @@ def parse_senateur(url):
             return
 
         # Store data in the database
-        senateur = Senateurs(
+        senateur = S_Senateurs(
             senateur_id=senateur_id,
             en_cours=en_cours,
             nom=nom,

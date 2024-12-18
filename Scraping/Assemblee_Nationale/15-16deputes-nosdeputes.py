@@ -169,8 +169,8 @@ department_numbers = {
     "Français établis hors de France": "999"
 }
 
-class Deputes(Base):
-    __tablename__ = 'deputes'
+class AN_Deputes(Base):
+    __tablename__ = 'AN_deputes'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     depute_id: Mapped[str]
@@ -191,14 +191,14 @@ class Deputes(Base):
     mail: Mapped[str] = mapped_column(nullable=True)
 
     def __repr__(self):
-        return f"<Deputes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
+        return f"<AN_Deputes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
 
 def get_all_deputes(legislature):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Deputes.depute_id)
-        .where(Deputes.legislature == legislature)
+        sqlalchemy.select(AN_Deputes.depute_id)
+        .where(AN_Deputes.legislature == legislature)
     )
     # Execute the query
     results = session.execute(stmt).fetchall()
@@ -345,7 +345,7 @@ def parse_depute(url):
 
             # open a new database session
             session = Session()
-            depute = Deputes(
+            depute = AN_Deputes(
                 depute_id=depute_id,
                 nom=nom,
                 legislature=legislature,

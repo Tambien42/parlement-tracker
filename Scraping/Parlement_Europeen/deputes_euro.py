@@ -15,8 +15,8 @@ engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 session = Session()
 
-class DeputesEuro(Base):
-    __tablename__ = 'deputes_europeens'
+class EU_Deputes(Base):
+    __tablename__ = 'EU_deputes'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     depute_id: Mapped[str]
@@ -38,7 +38,7 @@ class DeputesEuro(Base):
     twitter: Mapped[str] = mapped_column(nullable=True)
 
     def __repr__(self):
-        return f"<Deputes(id={self.id}, nom={self.nom})>"
+        return f"<EU_Deputes(id={self.id}, nom={self.nom})>"
 
 Base.metadata.create_all(engine)
 
@@ -96,7 +96,7 @@ def entrants_sortants(legislature):
         date_debut = mep.find("span", {"class": "sln-additional-info"}).text
         print(f"{depute_id} {date_debut}")
         parse_depute(url, legislature)
-        depute_euro = session.query(DeputesEuro).filter(DeputesEuro.depute_id == depute_id, DeputesEuro.legislature == legislature).first()
+        depute_euro = session.query(EU_Deputes).filter(EU_Deputes.depute_id == depute_id, EU_Deputes.legislature == legislature).first()
         if depute_euro:
             if depute_euro.en_cours != 1:
                 depute_euro.en_cours = 1
@@ -116,7 +116,7 @@ def entrants_sortants(legislature):
         date_fin = mep.find("span", {"class": "sln-additional-info"}).text.split("- ")[-1].strip()
         print(f"{depute_id} {date_fin}")
         parse_depute(url, legislature)
-        depute_euro = session.query(DeputesEuro).filter(DeputesEuro.depute_id == depute_id, DeputesEuro.legislature == legislature).first()
+        depute_euro = session.query(EU_Deputes).filter(EU_Deputes.depute_id == depute_id, EU_Deputes.legislature == legislature).first()
         if depute_euro:
             if depute_euro.en_cours != 0:
                 depute_euro.en_cours = 0
@@ -193,7 +193,7 @@ def parse_depute(url, legislature):
     if soup.find("div", {"id": "presentationmep"}).find("p", {"class": "sln-political-group-role"}):
         political_group_role = soup.find("div", {"id": "presentationmep"}).find("p", {"class": "sln-political-group-role"}).text
     
-    depute_euro = session.query(DeputesEuro).filter(DeputesEuro.depute_id == depute_id, DeputesEuro.legislature == legislature).first()
+    depute_euro = session.query(EU_Deputes).filter(EU_Deputes.depute_id == depute_id, EU_Deputes.legislature == legislature).first()
     if depute_euro:
         if depute_euro.groupe != groupe:
             depute_euro.groupe = groupe
@@ -202,7 +202,7 @@ def parse_depute(url, legislature):
         return
 
     # Store data in the database
-    depute = DeputesEuro(
+    depute = EU_Deputes(
         depute_id=depute_id,
         en_cours=en_cours,
         legislature=legislature,

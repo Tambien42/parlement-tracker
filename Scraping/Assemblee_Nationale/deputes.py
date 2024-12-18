@@ -20,8 +20,8 @@ engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 session = Session()
 
-class Deputes(Base):
-    __tablename__ = 'deputes'
+class AN_Deputes(Base):
+    __tablename__ = 'AN_deputes'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     depute_id: Mapped[str]
@@ -42,7 +42,7 @@ class Deputes(Base):
     mail: Mapped[str] = mapped_column(nullable=True)
 
     def __repr__(self):
-        return f"<Deputes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
+        return f"<AN_Deputes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
 
 Base.metadata.create_all(engine)
 
@@ -199,7 +199,7 @@ def get_all_current_deputes():
         list: A list of all depute IDs.
     """
     with Session() as session:
-        stmt = select(Deputes.depute_id).where(Deputes.legislature == legislature).where(Deputes.date_fin_mandat == None)
+        stmt = select(AN_Deputes.depute_id).where(AN_Deputes.legislature == legislature).where(AN_Deputes.date_fin_mandat == None)
         results = session.scalars(stmt).all()
         return results
 
@@ -280,7 +280,7 @@ def fetch_url_content(url, retries=10, delay=30):
 
 def group_change():
     with Session() as session:
-        stmt = select(Deputes).where(Deputes.legislature == legislature).where(Deputes.date_fin_mandat == None)
+        stmt = select(AN_Deputes).where(AN_Deputes.legislature == legislature).where(AN_Deputes.date_fin_mandat == None)
         results = session.scalars(stmt).all()
         for depute in results:
             print(depute.nom)
@@ -381,7 +381,7 @@ def parse_depute(url):
         dates = re.findall(date_pattern, bloc)
         date_fin_mandat = format_date(dates[0])
         raison_fin = bloc.split("(")[-1].replace(")", "").strip()
-        depute = session.query(Deputes).filter(Deputes.depute_id == depute_id, Deputes.legislature == legislature).first()
+        depute = session.query(AN_Deputes).filter(AN_Deputes.depute_id == depute_id, AN_Deputes.legislature == legislature).first()
         if depute:
             depute.mail = mail
             depute.date_fin_mandat = date_fin_mandat
@@ -448,13 +448,13 @@ def parse_depute(url):
             parentheses_content = re.findall(parentheses_pattern, span.text)
             raison_debut = parentheses_content[0]
             
-            depute = session.query(Deputes).filter(Deputes.depute_id == depute_id, Deputes.legislature == legislature, Deputes.date_debut_mandat == date_debut_mandat).first()
+            depute = session.query(AN_Deputes).filter(AN_Deputes.depute_id == depute_id, AN_Deputes.legislature == legislature, AN_Deputes.date_debut_mandat == date_debut_mandat).first()
             if depute:
                 print(f"Depute with ID {depute_id} already in database. Skipping.")
                 continue
     
             # Store data in the database
-            depute = Deputes(
+            depute = AN_Deputes(
                 depute_id=depute_id,
                 nom=nom,
                 legislature=legislature,
@@ -558,7 +558,7 @@ def parse_old_mandat_clos(url):
             raison_debut = parentheses_content[0]
             raison_fin = parentheses_content[1]
 
-            record = session.query(Deputes).filter(Deputes.depute_id == depute_id, Deputes.legislature == legislature, Deputes.date_fin_mandat == None).first()
+            record = session.query(AN_Deputes).filter(AN_Deputes.depute_id == depute_id, AN_Deputes.legislature == legislature, AN_Deputes.date_fin_mandat == None).first()
             if record:
                 record.date_fin_mandat = date_fin_mandat
                 record.raison_fin = raison_fin
@@ -568,12 +568,12 @@ def parse_old_mandat_clos(url):
                 print(f"Modifying data of depute with ID {depute_id}.")
                 # modify record
                 continue
-            if session.query(Deputes).filter(Deputes.depute_id == depute_id, Deputes.legislature == legislature, Deputes.date_fin_mandat == date_fin_mandat).first():
+            if session.query(AN_Deputes).filter(AN_Deputes.depute_id == depute_id, AN_Deputes.legislature == legislature, AN_Deputes.date_fin_mandat == date_fin_mandat).first():
                 print(f"Depute with ID {depute_id} already in database. Skipping.")
                 continue
 
             # Store data in the database
-            depute = Deputes(
+            depute = AN_Deputes(
                 depute_id=depute_id,
                 nom=nom,
                 legislature=legislature,

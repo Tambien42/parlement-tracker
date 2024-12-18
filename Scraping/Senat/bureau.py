@@ -16,8 +16,8 @@ engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 session = Session()
 
-class Fonctions_Senat(Base):
-    __tablename__ = 'fonctions_senat'
+class S_Fonctions(Base):
+    __tablename__ = 'S_fonctions'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     session: Mapped[str]
@@ -28,7 +28,7 @@ class Fonctions_Senat(Base):
     date: Mapped[datetime]
 
     def __repr__(self):
-        return f"<Deputes(id={self.id}, session={self.session}, nom={self.nom})>"
+        return f"<S_Fonctions(id={self.id}, session={self.session}, president={self.president})>"
 
 Base.metadata.create_all(engine)
 
@@ -60,9 +60,9 @@ def check_fonctions(sessionp):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Fonctions_Senat.president, Fonctions_Senat.vice_presidents, Fonctions_Senat.questeurs, Fonctions_Senat.secretaires)
-        .where(Fonctions_Senat.session == sessionp)
-        .order_by(Fonctions_Senat.date.desc())
+        sqlalchemy.select(S_Fonctions.president, S_Fonctions.vice_presidents, S_Fonctions.questeurs, S_Fonctions.secretaires)
+        .where(S_Fonctions.session == sessionp)
+        .order_by(S_Fonctions.date.desc())
     )
     # Execute the query
     results = session.execute(stmt).fetchall()
@@ -122,7 +122,7 @@ def parse(url):
         return
 
     # open a new database session
-    depute = Fonctions_Senat(
+    depute = S_Fonctions(
         session=sessionp,
         president=','.join(map(str, president)),
         vice_presidents=','.join(map(str, vps)),

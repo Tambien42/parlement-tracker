@@ -16,8 +16,8 @@ engine = sqlalchemy.create_engine('sqlite:///parlements.db')
 Session = sessionmaker(bind=engine)
 Base = declarative_base()
 
-class Deputes(Base):
-    __tablename__ = 'deputes'
+class AN_Deputes(Base):
+    __tablename__ = 'AN_deputes'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     depute_id: Mapped[str]
@@ -38,7 +38,7 @@ class Deputes(Base):
     mail: Mapped[str] = mapped_column(nullable=True)
 
     def __repr__(self):
-        return f"<Deputes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
+        return f"<AN_Deputes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
     
 #Create the table in the database
 Base.metadata.create_all(engine)
@@ -51,7 +51,7 @@ def format_date(str):
 
 # open a new database session
 session = Session()
-depute = Deputes(
+depute = AN_Deputes(
             depute_id="PA840737",
             nom="Flavien Termet",
             legislature=17,

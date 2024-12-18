@@ -155,8 +155,8 @@ department_numbers = {
     "Français établis hors de France": "999"
 }
 
-class Deputes(Base):
-    __tablename__ = 'deputes'
+class AN_Deputes(Base):
+    __tablename__ = 'AN_deputes'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     depute_id: Mapped[str]
@@ -175,10 +175,10 @@ class Deputes(Base):
     mail: Mapped[str] = mapped_column(nullable=True)
 
     def __repr__(self):
-        return f"<Deputes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
+        return f"<AN_Deputes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
 
-class FonctionsAN(Base):
-    __tablename__ = 'fonctions_an'
+class AN_Fonctions(Base):
+    __tablename__ = 'AN_fonctions'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     legislature: Mapped[int]
@@ -189,7 +189,7 @@ class FonctionsAN(Base):
     date: Mapped[datetime]
 
     def __repr__(self):
-        return f"<FonctionsAN(id={self.id}, legislature={self.legislature}, president={self.president})>"
+        return f"<AN_Fonctions(id={self.id}, legislature={self.legislature}, president={self.president})>"
 
 def parse(url):
     list = get_all_deputes_from_votes(legislature)
@@ -284,7 +284,7 @@ def parse_depute(url):
 
     # open a new database session
     session = Session()
-    depute = Deputes(
+    depute = AN_Deputes(
         depute_id=depute_id,
         nom=nom,
         legislature=legislature,
@@ -341,7 +341,7 @@ def parse_fonctions(url):
 
     # # open a new database session
     session = Session()
-    depute = FonctionsAN(
+    depute = AN_Fonctions(
         legislature=legislature,
         president=','.join(map(str, president)),
         vice_presidents=','.join(map(str, vicep)),
@@ -357,9 +357,9 @@ def check_db(legislature, depute_id):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Deputes.depute_id)
-        .where(Deputes.legislature == legislature)
-        .where(Deputes.depute_id == depute_id)
+        sqlalchemy.select(AN_Deputes.depute_id)
+        .where(AN_Deputes.legislature == legislature)
+        .where(AN_Deputes.depute_id == depute_id)
     )
     # Execute the query
     results = session.execute(stmt).scalars().all()
@@ -371,9 +371,9 @@ def check_fonctions(legislature):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(FonctionsAN.president, FonctionsAN.vice_presidents, FonctionsAN.questeurs, FonctionsAN.secretaires)
-        .where(FonctionsAN.legislature == legislature)
-        .order_by(FonctionsAN.date.desc())
+        sqlalchemy.select(AN_Fonctions.president, AN_Fonctions.vice_presidents, AN_Fonctions.questeurs, AN_Fonctions.secretaires)
+        .where(AN_Fonctions.legislature == legislature)
+        .order_by(AN_Fonctions.date.desc())
     )
     # Execute the query
     results = session.execute(stmt).fetchall()

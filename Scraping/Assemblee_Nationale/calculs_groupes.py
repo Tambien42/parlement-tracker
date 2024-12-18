@@ -4,10 +4,10 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Mapped, mapped_column, sessionmaker, declarative_base
 from datetime import datetime, date
 from pprint import pprint
-from deputes import Deputes
-from scrutins import Scrutins
-from votes import Votes
-from groupes import Groupes
+from deputes import AN_Deputes
+from scrutins import AN_Scrutins
+from votes import AN_Votes
+from groupes import AN_Groupes
 
 # Global Variable
 legislature = 17
@@ -19,8 +19,8 @@ engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 session = Session()
 
-class Pourcentages_GroupesAN(Base):
-    __tablename__ = 'pourcentages_GroupesAN'
+class AN_Pourcentages_Groupes(Base):
+    __tablename__ = 'AN_pourcentages_Groupes'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     groupe_id: Mapped[str]
@@ -29,22 +29,22 @@ class Pourcentages_GroupesAN(Base):
     date: Mapped[datetime]
 
     def __repr__(self):
-        return f"<Deputes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
+        return f"<AN_Deputes(id={self.id}, legislature={self.legislature}, nom={self.nom})>"
 
 Base.metadata.create_all(engine)
 
 def get_all_groupes(legislature):
-    groupes = session.query(Groupes).filter(Groupes.legislature == legislature).all()
+    groupes = session.query(AN_Groupes).filter(AN_Groupes.legislature == legislature).all()
     return groupes
 
 def scrutins_numbers(legislature, start_date, end_date):
     if end_date is None:
         end_date = date.today()
-    scrutins = session.query(Scrutins).filter(Scrutins.legislature == legislature).where(between(Scrutins.date_seance, start_date, end_date)).all()
+    scrutins = session.query(AN_Scrutins).filter(AN_Scrutins.legislature == legislature).where(between(AN_Scrutins.date_seance, start_date, end_date)).all()
     return len(scrutins)
 
 def get_number_votes_depute(depute_id, legislature):
-    votes = session.query(Votes).filter(Votes.legislature == legislature).all()
+    votes = session.query(AN_Votes).filter(AN_Votes.legislature == legislature).all()
     count = 0
     for vote in votes:
         if depute_id in vote.pour or depute_id in vote.contre or depute_id in vote.abstention or depute_id in vote.non_votants:
@@ -52,7 +52,7 @@ def get_number_votes_depute(depute_id, legislature):
     return count
 
 def get_depute_dates(depute_id, legslature):
-    depute = session.query(Deputes).filter(Deputes.legislature == legislature).first()
+    depute = session.query(AN_Deputes).filter(AN_Deputes.legislature == legislature).first()
     return depute.date_debut_mandat, depute.date_fin_mandat
 
 def calcul_pourcentage_groupe_vote():
@@ -78,14 +78,14 @@ def calcul_pourcentage_groupe_vote():
         print(f'{groupe.nom} {moyenne_groupe}%')
 
         session = Session() 
-        db = session.query(Pourcentages_GroupesAN).filter(Pourcentages_GroupesAN.groupe_id == groupe.groupe_id and Pourcentages_GroupesAN.date == groupe.date).first()
+        db = session.query(AN_Pourcentages_Groupes).filter(AN_Pourcentages_Groupes.groupe_id == groupe.groupe_id and AN_Pourcentages_Groupes.date == groupe.date).first()
         if db:
             db.vote = moyenne_groupe
             session.commit()
             continue
 
         # Store data in the database
-        depute = Pourcentages_GroupesAN(
+        depute = AN_Pourcentages_Groupes(
             groupe_id=groupe.groupe_id,
             legislature=groupe.legislature,
             vote=moyenne_groupe,

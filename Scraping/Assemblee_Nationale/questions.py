@@ -10,8 +10,8 @@ engine = sqlalchemy.create_engine('sqlite:///parlements.db')
 Session = sessionmaker(bind=engine)
 Base = declarative_base()
 
-class Questions(Base):
-    __tablename__ = 'questions'
+class AN_Questions(Base):
+    __tablename__ = 'AN_questions'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     legislature: Mapped[int]
@@ -25,7 +25,7 @@ class Questions(Base):
     nom: Mapped[str]
 
     def __repr__(self):
-        return f"<Questions(id={self.id}, legislature={self.legislature}, numero={self.numero})>"
+        return f"<AN_Questions(id={self.id}, legislature={self.legislature}, numero={self.numero})>"
 
 def parse(url):
     pass
@@ -37,9 +37,9 @@ def get_question(legislature):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Questions.president)
-        .where(Questions.legislature == legislature)
-        .order_by(Questions.date_question.desc())
+        sqlalchemy.select(AN_Questions.president)
+        .where(AN_Questions.legislature == legislature)
+        .order_by(AN_Questions.date_question.desc())
     )
     # Execute the query
     results = session.execute(stmt).scalars().all()

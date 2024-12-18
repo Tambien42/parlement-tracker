@@ -17,8 +17,8 @@ engine = sqlalchemy.create_engine('sqlite:///parlements.db')
 Session = sessionmaker(bind=engine)
 Base = declarative_base()
 
-class Votes(Base):
-    __tablename__ = 'votes'
+class AN_Votes(Base):
+    __tablename__ = 'AN_votes'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     numero: Mapped[str]
@@ -29,7 +29,7 @@ class Votes(Base):
     non_votants: Mapped[str]
 
     def __repr__(self):
-        return f"<Votes(id={self.id}, legislature={self.legislature}, numero={self.numero})>"
+        return f"<AN_Votes(id={self.id}, legislature={self.legislature}, numero={self.numero})>"
 
 def parse(url):
     while True:
@@ -182,7 +182,7 @@ def parse_vote(url):
 
     #open a new database session
     session = Session()
-    vote = Votes(
+    vote = AN_Votes(
         numero=numero,
         legislature=legislature,
         pour = ','.join(map(str, pour)),
@@ -216,9 +216,9 @@ def check_db(legislature, numero):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Votes.numero)
-        .where(Votes.legislature == legislature)
-        .where(Votes.numero == numero)
+        sqlalchemy.select(AN_Votes.numero)
+        .where(AN_Votes.legislature == legislature)
+        .where(AN_Votes.numero == numero)
     )
     # Execute the query
     results = session.execute(stmt).scalars().all()
@@ -230,8 +230,8 @@ def get_votes(legislature):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Votes.numero)
-        .where(Votes.legislature == legislature)
+        sqlalchemy.select(AN_Votes.numero)
+        .where(AN_Votes.legislature == legislature)
     )
     # Execute the query
     results = session.execute(stmt).scalars().all()

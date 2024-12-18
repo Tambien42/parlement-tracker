@@ -10,8 +10,8 @@ engine = sqlalchemy.create_engine('sqlite:///parlements.db')
 Session = sessionmaker(bind=engine)
 Base = declarative_base()
 
-class Lois(Base):
-    __tablename__ = 'propositions_loi'
+class AN_Lois(Base):
+    __tablename__ = 'AN_propositions_loi'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     legislature: Mapped[int]
@@ -23,7 +23,7 @@ class Lois(Base):
     cosignataire: Mapped[str]
 
     def __repr__(self):
-        return f"<Lois(id={self.id}, legislature={self.legislature}, numero={self.numero})>"
+        return f"<AN_Lois(id={self.id}, legislature={self.legislature}, numero={self.numero})>"
 
 def parse(url):
     pass
@@ -35,8 +35,8 @@ def get_loi(legislature):
     session = Session()
     # Define the query
     stmt = (
-        sqlalchemy.select(Lois.titre)
-        .where(Lois.legislature == legislature)
+        sqlalchemy.select(AN_Lois.titre)
+        .where(AN_Lois.legislature == legislature)
     )
     # Execute the query
     results = session.execute(stmt).scalars().all()

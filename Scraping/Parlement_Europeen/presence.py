@@ -14,8 +14,8 @@ DATABASE_URL = "sqlite:///parlements.db"
 Base = declarative_base()
 engine = create_engine(DATABASE_URL)
 
-class DeputesEuro(Base):
-    __tablename__ = 'deputes_europeens'
+class EU_Deputes(Base):
+    __tablename__ = 'EU_deputes'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     depute_id: Mapped[str]
@@ -36,10 +36,10 @@ class DeputesEuro(Base):
     twitter: Mapped[str] = mapped_column(nullable=True)
 
     def __repr__(self):
-        return f"<DeputesEuro(id={self.id}, nom={self.nom})>"
+        return f"<EU_Deputes(id={self.id}, nom={self.nom})>"
 
-class Presence(Base):
-    __tablename__ = 'presence_parlement_euro'
+class EU_Presence(Base):
+    __tablename__ = 'EU_presence'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     date: Mapped[datetime]
@@ -50,7 +50,7 @@ class Presence(Base):
     excuses: Mapped[str] = mapped_column(nullable=True)
 
     def __repr__(self):
-        return f"<Presence(id={self.id}, nom={self.nom})>"
+        return f"<EU_presence(id={self.id}, nom={self.nom})>"
 
 Base.metadata.create_all(engine)
 
@@ -111,14 +111,14 @@ def parse(url):
                     excuses = paragraphs[3].text.split(", ")
 
             with Session(engine) as session:
-                date_presence = session.query(Presence).filter(Presence.date == date_session, Presence.legislature == legislature).first()
+                date_presence = session.query(EU_Presence).filter(EU_Presence.date == date_session, EU_Presence.legislature == legislature).first()
                 if date_presence:
                     print("Already in DB.")
                     continue
                     #return
                 
                 # Store data in the database
-                depute = Presence(
+                depute = EU_Presence(
                     date=date_session,
                     legislature=legislature,
                     type=type,
