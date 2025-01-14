@@ -20,7 +20,7 @@ Session = sessionmaker(bind=engine)
 session = Session()
 
 class AN_Pourcentages_Groupes(Base):
-    __tablename__ = 'AN_pourcentages_Groupes'
+    __tablename__ = 'AN_pourcentages_groupes'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     groupe_id: Mapped[str]
@@ -51,8 +51,8 @@ def get_number_votes_depute(depute_id, legislature):
             count = count + 1
     return count
 
-def get_depute_dates(depute_id, legslature):
-    depute = session.query(AN_Deputes).filter(AN_Deputes.legislature == legislature).first()
+def get_depute_dates(depute_id, legislature):
+    depute = session.query(AN_Deputes).filter(AN_Deputes == depute_id, AN_Deputes.legislature == legislature).first()
     return depute.date_debut_mandat, depute.date_fin_mandat
 
 def calcul_pourcentage_groupe_vote():
@@ -77,24 +77,24 @@ def calcul_pourcentage_groupe_vote():
         moyenne_groupe = round(total / count, 2)
         print(f'{groupe.nom} {moyenne_groupe}%')
 
-        session = Session() 
-        db = session.query(AN_Pourcentages_Groupes).filter(AN_Pourcentages_Groupes.groupe_id == groupe.groupe_id and AN_Pourcentages_Groupes.date == groupe.date).first()
-        if db:
-            db.vote = moyenne_groupe
-            session.commit()
-            continue
+        # session = Session() 
+        # db = session.query(AN_Pourcentages_Groupes).filter(AN_Pourcentages_Groupes.groupe_id == groupe.groupe_id and AN_Pourcentages_Groupes.date == groupe.date).first()
+        # if db:
+        #     db.vote = moyenne_groupe
+        #     session.commit()
+        #     continue
 
-        # Store data in the database
-        depute = AN_Pourcentages_Groupes(
-            groupe_id=groupe.groupe_id,
-            legislature=groupe.legislature,
-            vote=moyenne_groupe,
-            date=groupe.date
-        )
+        # # Store data in the database
+        # depute = AN_Pourcentages_Groupes(
+        #     groupe_id=groupe.groupe_id,
+        #     legislature=groupe.legislature,
+        #     vote=moyenne_groupe,
+        #     date=groupe.date
+        # )
         
-        session.add(depute)  # Use merge to update or insert
-        session.commit()
-        session.close() 
+        # session.add(depute)  # Use merge to update or insert
+        # session.commit()
+        # session.close() 
 
 def main():
     calcul_pourcentage_groupe_vote()
