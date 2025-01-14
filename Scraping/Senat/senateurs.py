@@ -260,6 +260,8 @@ def group_change():
                 print("Modifying Groupe")
                 session.commit()
 
+# TODO Find session
+# TODO problem "Fin de mandat" in db
 def parse(url):
     response = fetch_url(url)
     soup = BeautifulSoup(response, 'html.parser')
